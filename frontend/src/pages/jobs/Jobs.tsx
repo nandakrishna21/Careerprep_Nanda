@@ -6,23 +6,35 @@ import {
   Building2,
   CalendarClock,
   ExternalLink,
+  Globe,
   MapPin,
   Search as SearchIcon,
   Wallet,
 } from 'lucide-react';
 import api, { errorMessage, get, post, del } from '../../lib/api';
-import type { Job, JobFacets, Paged } from '../../lib/types';
+import type { Job, JobFacets, Paged, RemoteSite } from '../../lib/types';
 import { Badge, Button, Card, EmptyState, Select, Spinner } from '../../components/ui';
 import { titleCase } from '../../components/helpers';
 
-type Tab = 'all' | 'government' | 'it' | 'saved';
+type Tab = 'all' | 'government' | 'it' | 'remote' | 'saved';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'government', label: 'Government' },
   { key: 'it', label: 'IT' },
+  { key: 'remote', label: 'Remote' },
   { key: 'saved', label: 'Saved' },
 ];
+
+// Display names for the boards remote listings are crawled from.
+const REMOTE_SOURCE_LABELS: Record<string, string> = {
+  remoteok: 'RemoteOK',
+  remotive: 'Remotive',
+  weworkremotely: 'WeWorkRemotely',
+  nodesk: 'NoDesk',
+  linkedin: 'LinkedIn',
+  indeed: 'Indeed',
+};
 
 const STATUS_OPTIONS = ['saved', 'applied', 'interviewing', 'offer', 'rejected'];
 
@@ -53,6 +65,7 @@ export default function Jobs() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [facets, setFacets] = useState<JobFacets | null>(null);
+  const [remoteSites, setRemoteSites] = useState<RemoteSite[]>([]);
 
   // Filter options come from the board itself so the UI never offers a value that
   // returns zero rows (seed values and crawled values differ).
@@ -63,12 +76,17 @@ export default function Jobs() {
         if (alive) setFacets(data ?? null);
       })
       .catch(() => undefined);
+    get<{ sites?: RemoteSite[] }>('/jobs/remote-sites')
+      .then((data) => {
+        if (alive) setRemoteSites(data?.sites ?? []);
+      })
+      .catch(() => undefined);
     return () => {
       alive = false;
     };
   }, []);
 
-  const facetKey: 'all' | 'government' | 'it' = tab === 'saved' ? 'all' : tab;
+  const facetKey: 'all' | 'government' | 'it' | 'remote' = tab === 'saved' ? 'all' : tab;
   const group = facets?.[facetKey];
   const categoryOptions = (group?.categories ?? []).map((option) => option.value);
   const roleOptions = group?.roles ?? [];
@@ -91,8 +109,13 @@ export default function Jobs() {
           setPageSize(list.length || 12);
         } else {
           const params: Record<string, unknown> = { page, page_size: 12 };
-          if (tab !== 'all') params.type = tab;
-          if (category) params.category = category;
+          if (tab === 'remote') {
+            params.type = 'it';
+            params.category = 'remote';
+          } else {
+            if (tab !== 'all') params.type = tab;
+            if (category) params.category = category;
+          }
           if (role) params.role = role;
           if (location) params.location = location;
           if (q.trim()) params.q = q.trim();
@@ -180,7 +203,9 @@ export default function Jobs() {
         <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Jobs & Opportunities</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Government notifications, exams and IT openings — save and track your applications.
+            {tab === 'remote'
+              ? 'Work-from-anywhere openings crawled from the top remote job boards.'
+              : 'Government notifications, exams and IT openings — save and track your applications.'}
           </p>
         </div>
         <div className="inline-flex w-fit flex-wrap rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
@@ -213,10 +238,43 @@ export default function Jobs() {
         </form>
       </div>
 
+      {tab === 'remote' && remoteSites.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+            Remote job websites
+          </p>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {remoteSites.map((site) => (
+              <a
+                key={site.name}
+                href={site.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="card group w-56 shrink-0 p-4 transition hover:-translate-y-0.5 hover:border-brand-300 dark:hover:border-brand-500/40"
+              >
+                <span className="flex items-center gap-2 font-bold text-slate-900 dark:text-white">
+                  <Globe className="h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" />
+                  <span className="truncate">{site.name}</span>
+                  <ExternalLink className="ml-auto h-3.5 w-3.5 shrink-0 text-slate-400 transition group-hover:text-brand-500" />
+                </span>
+                <span className="mt-1 block text-xs leading-snug text-slate-500 dark:text-slate-400">
+                  {site.blurb}
+                </span>
+                {site.live && (
+                  <span className="mt-2 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    Live on this board
+                  </span>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {tab !== 'saved' &&
         (categoryOptions.length > 0 || roleOptions.length > 0 || locationOptions.length > 0) && (
           <div className="flex flex-wrap items-center gap-3">
-            {categoryOptions.length > 0 && (
+            {tab !== 'remote' && categoryOptions.length > 0 && (
               <div className="w-full sm:w-48">
                 <Select
                   value={category}
@@ -288,11 +346,13 @@ export default function Jobs() {
         <Spinner />
       ) : items.length === 0 ? (
         <EmptyState
-          title={tab === 'saved' ? 'No saved jobs yet' : 'No jobs found'}
+          title={tab === 'saved' ? 'No saved jobs yet' : tab === 'remote' ? 'No remote jobs yet' : 'No jobs found'}
           description={
             tab === 'saved'
               ? 'Save jobs from the board to track your applications here.'
-              : 'Try another tab, role, location or search term.'
+              : tab === 'remote'
+                ? 'Run a remote sync from the admin panel, then try another role, location or search term.'
+                : 'Try another tab, role, location or search term.'
           }
           action={
             tab === 'saved' ? (
@@ -332,6 +392,9 @@ export default function Jobs() {
                   </Badge>
                   <Badge color="slate">{titleCase(job.category)}</Badge>
                   {job.role && <Badge color="brand">{job.role}</Badge>}
+                  {tab === 'remote' && job.source && REMOTE_SOURCE_LABELS[job.source] && (
+                    <Badge color="green">via {REMOTE_SOURCE_LABELS[job.source]}</Badge>
+                  )}
                   {job.is_saved && <Badge color="green">{titleCase(job.save_status ?? 'saved')}</Badge>}
                 </div>
 

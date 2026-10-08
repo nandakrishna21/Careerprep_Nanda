@@ -192,6 +192,14 @@ export interface JobFacets {
   all: JobFacetGroup;
   government: JobFacetGroup;
   it: JobFacetGroup;
+  remote: JobFacetGroup;
+}
+
+export interface RemoteSite {
+  name: string;
+  url: string;
+  blurb: string;
+  live: boolean;
 }
 
 export interface DashboardData {

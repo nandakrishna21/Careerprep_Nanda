@@ -99,6 +99,20 @@ _IT_RULES: list[tuple[str, tuple[str, ...]]] = [
         ),
     ),
     (
+        # Catches what the frontend bucket misses: product/graphic/game designers.
+        # UI/UX-titled roles stay frontend (classified there first, consistently).
+        "design-ui-ux",
+        (
+            r"\bproduct designer\b",
+            r"\bgraphic designer\b",
+            r"\bvisual designer\b",
+            r"\blevel designer\b",
+            r"\bgame designer\b",
+            r"\bdesigner\b",
+            r"\bfigma\b",
+        ),
+    ),
+    (
         "devops-cloud",
         (
             r"\bdevops\b",
@@ -148,6 +162,7 @@ _IT_RULES: list[tuple[str, tuple[str, ...]]] = [
             r"\bpower bi\b",
             r"\banalytics\b",
             r"\bdata visualization\b",
+            r"\bannotator\b",
         ),
     ),
     (
@@ -172,6 +187,10 @@ _IT_RULES: list[tuple[str, tuple[str, ...]]] = [
             r"\btech lead\b",
             r"\btechnical lead\b",
             r"\blead engineer\b",
+            r"\bsolutions architect\b",
+            r"\bsolution architect\b",
+            r"\btechnical architect\b",
+            r"\bmember of technical staff\b",
             r"\bsde\b",
             r"\bprogrammer\b",
             r"\bdeveloper\b",
@@ -386,6 +405,7 @@ ROLE_LABELS: dict[str, str] = {
     "frontend": "Frontend",
     "backend": "Backend",
     "mobile": "Mobile / Android",
+    "design-ui-ux": "Design & UX",
     "devops-cloud": "DevOps & Cloud",
     "data-science-ai": "Data Science & AI",
     "data-analytics": "Data & Analytics",

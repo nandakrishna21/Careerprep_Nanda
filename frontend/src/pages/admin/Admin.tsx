@@ -11,11 +11,12 @@ import {
   YAxis,
 } from 'recharts';
 import {
-  BookOpen,
-  ChevronDown,
-  ChevronRight,
-  FileText,
-  ImageIcon,
+    BookOpen,
+    ChevronDown,
+    ChevronRight,
+    FileText,
+    Globe,
+    ImageIcon,
   LayoutGrid,
   ListChecks,
   Pencil,
@@ -2086,6 +2087,39 @@ function JobsPanel() {
     }
   };
 
+  const runRemoteSync = async () => {
+    if (syncing) return;
+    if (syncStatus && !syncStatus.token_configured) {
+      toast.error('Set APIFY_TOKEN in .env before syncing remote jobs.');
+      return;
+    }
+    setSyncing(true);
+    toast.loading('Crawling remote job boards — this can take a few minutes…', { id: 'job-sync-remote' });
+    try {
+      const result = await post<SyncResult>('/admin/jobs/sync?track=remote');
+      setSyncResult(result);
+      const failed = result.sources.filter((run) => !run.ok);
+      if (failed.length) {
+        toast.error(
+          `Synced ${result.jobs_total} jobs, but ${failed.length} source(s) failed: ${failed
+            .map((run) => run.key ?? 'source')
+            .join(', ')}`,
+          { id: 'job-sync-remote', duration: 8000 }
+        );
+      } else {
+        toast.success(
+          `Synced ${result.synced_total} remote listings · ${result.created} new · ${result.updated} updated`,
+          { id: 'job-sync-remote', duration: 6000 }
+        );
+      }
+      await Promise.all([load(), loadStatus()]);
+    } catch (err) {
+      toast.error(errorMessage(err), { id: 'job-sync-remote', duration: 8000 });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const saveJob = async (e: FormEvent) => {
     e.preventDefault();
     if (!modal) return;
@@ -2140,6 +2174,9 @@ function JobsPanel() {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void runSync()} loading={syncing}>
             <RefreshCw className="h-4 w-4" /> Sync now
+          </Button>
+          <Button variant="outline" onClick={() => void runRemoteSync()} loading={syncing}>
+            <Globe className="h-4 w-4" /> Sync remote
           </Button>
           <Button onClick={() => setModal({ ...EMPTY_JOB })}>
             <Plus className="h-4 w-4" /> New job

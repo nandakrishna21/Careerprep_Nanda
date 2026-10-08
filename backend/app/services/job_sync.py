@@ -14,10 +14,12 @@ from __future__ import annotations
 import html
 import re
 import time
+import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 import httpx
@@ -387,6 +389,323 @@ def _map_indeed(item: dict) -> dict | None:
 
 
 # --------------------------------------------------------------------------
+# remote job boards: direct feeds (public HTTP, no Apify credits, always fresh)
+# --------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FeedSpec:
+    key: str
+    label: str
+    fetch: Callable[[httpx.Client], list[dict]]
+    map_item: Callable[[dict], dict | None]
+
+
+def _public_client() -> httpx.Client:
+    """Feeds are public: never send the Apify token to third-party sites."""
+    return httpx.Client(
+        timeout=httpx.Timeout(60.0),
+        follow_redirects=True,
+        headers={"User-Agent": "CareerPrepHub/1.0"},
+    )
+
+
+def _fetch_remoteok(client: httpx.Client) -> list[dict]:
+    response = client.get("https://remoteok.com/api")
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, list):
+        return []
+    return [item for item in payload if isinstance(item, dict) and item.get("id")]
+
+
+def _remoteok_salary(item: dict) -> str:
+    def amount(value: Any) -> str:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return ""
+        return _money(value)
+
+    lo, hi = amount(item.get("salary_min")), amount(item.get("salary_max"))
+    if lo and hi:
+        return f"{lo} - {hi}"
+    return lo or hi
+
+
+def _map_remoteok(item: dict) -> dict | None:
+    title = _text(item.get("position"), 300)
+    external_id = _text(item.get("id"), 120)
+    if not title or not external_id:
+        return None
+    url = _text(item.get("url"), 1000)
+    if url.startswith("http"):
+        apply_link = url
+    elif url.startswith("/"):
+        apply_link = f"https://remoteok.com{url}"
+    else:
+        apply_link = "https://remoteok.com"
+    return {
+        "title": title,
+        "company": _text(item.get("company"), 255),
+        "type": "it",
+        "category": it_category(title, "", remote=True),
+        "description": _plain_text(item.get("description"), 1500)
+        or "Remote job listing published on RemoteOK.",
+        "location": _text(item.get("location"), 255) or "Remote",
+        "salary": _remoteok_salary(item),
+        "apply_link": apply_link,
+        "deadline": None,
+        "source": "remoteok",
+        "external_id": external_id,
+        "posted_at": parse_date(item.get("date")),
+    }
+
+
+def _fetch_remotive(client: httpx.Client) -> list[dict]:
+    response = client.get("https://remotive.com/api/remote-jobs", params={"limit": 100})
+    response.raise_for_status()
+    payload = response.json()
+    jobs = payload.get("jobs", []) if isinstance(payload, dict) else []
+    return [job for job in jobs if isinstance(job, dict) and job.get("id")]
+
+
+def _map_remotive(item: dict) -> dict | None:
+    title = _text(item.get("title"), 300)
+    external_id = _text(item.get("id"), 120)
+    if not title or not external_id:
+        return None
+    return {
+        "title": title,
+        "company": _text(item.get("company_name"), 255),
+        "type": "it",
+        "category": it_category(title, item.get("job_type"), remote=True),
+        "description": _plain_text(item.get("description"), 1500)
+        or "Remote job listing published on Remotive.",
+        "location": _text(item.get("candidate_required_location"), 255) or "Remote",
+        "salary": _text(item.get("salary"), 255),
+        "apply_link": _text(item.get("url"), 1000) or "https://remotive.com",
+        "deadline": None,
+        "source": "remotive",
+        "external_id": external_id,
+        "posted_at": parse_date(item.get("publication_date")),
+    }
+
+
+_WWR_FEEDS = [
+    "https://weworkremotely.com/categories/remote-programming-jobs.rss",
+    "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss",
+    "https://weworkremotely.com/categories/remote-design-jobs.rss",
+    "https://weworkremotely.com/categories/remote-customer-support-jobs.rss",
+]
+
+_WWR_HEADQUARTERS = re.compile(r"headquarters:\s*</strong>\s*([^<]+)", re.IGNORECASE)
+
+
+def _fetch_wwr(client: httpx.Client) -> list[dict]:
+    out: list[dict] = []
+    for url in _WWR_FEEDS:
+        response = client.get(url)
+        response.raise_for_status()
+        root = ET.fromstring(response.text)
+        for entry in root.findall("./channel/item"):
+            out.append(
+                {
+                    tag: (node.text or "" if (node := entry.find(tag)) is not None else "")
+                    for tag in ("title", "link", "guid", "pubDate", "description")
+                }
+            )
+    return out
+
+
+def _wwr_company_title(raw: Any) -> tuple[str, str]:
+    """WeWorkRemotely titles look like ``"Acme: Senior Backend Engineer"``."""
+    title = _text(raw, 300)
+    if ": " in title:
+        company, _, rest = title.partition(": ")
+        if company and rest and len(company) <= 60:
+            return _text(company, 255), rest
+    return "", title
+
+
+def _wwr_location(description_html: Any) -> str:
+    match = _WWR_HEADQUARTERS.search(str(description_html or ""))
+    if match:
+        place = _text(match.group(1), 120)
+        if place:
+            return "Remote" if "remote" in place.lower() else place
+    return "Remote"
+
+
+def _wwr_date(value: Any) -> date | None:
+    try:
+        return parsedate_to_datetime(str(value)).date()
+    except (TypeError, ValueError, OverflowError, IndexError):
+        return None
+
+
+def _map_wwr(item: dict) -> dict | None:
+    company, title = _wwr_company_title(item.get("title"))
+    link = _text(item.get("link"), 1000)
+    guid = _text(item.get("guid"), 500)
+    if not title or not (guid or link):
+        return None
+    description = item.get("description") or ""
+    return {
+        "title": title,
+        "company": company,
+        "type": "it",
+        "category": it_category(title, "", remote=True),
+        "description": _plain_text(description, 1500)
+        or "Remote job listing published on WeWorkRemotely.",
+        "location": _wwr_location(description),
+        "salary": "",
+        "apply_link": link or guid or "https://weworkremotely.com",
+        "deadline": None,
+        "source": "weworkremotely",
+        "external_id": guid or link,
+        "posted_at": _wwr_date(item.get("pubDate")),
+    }
+
+
+_NODESK_ITEM = re.compile(r"<item>(.*?)</item>", re.S | re.I)
+_NODESK_FIELD = re.compile(r"<(title|link|guid|pubDate|description)>(.*?)</\1>", re.S | re.I)
+_NODESK_CDATA = re.compile(r"<!\[CDATA\[(.*?)\]\]>", re.S)
+
+
+def _fetch_nodesk(client: httpx.Client) -> list[dict]:
+    # The feed embeds bare HTML entities, so regex beats a strict XML parser.
+    response = client.get("https://nodesk.co/remote-jobs/index.xml")
+    response.raise_for_status()
+    out: list[dict] = []
+    for block in _NODESK_ITEM.findall(response.text):
+        row: dict[str, str] = {}
+        for tag, raw in _NODESK_FIELD.findall(block):
+            text = _NODESK_CDATA.sub(r"\1", raw)
+            row[tag.lower()] = html.unescape(text).strip()
+        if row.get("title"):
+            out.append(row)
+    return out
+
+
+def _nodesk_company_title(raw: Any) -> tuple[str, str]:
+    """NoDesk titles look like ``"Senior Designer at Acme"``."""
+    title = _text(raw, 300)
+    if " at " in title:
+        role, _, company = title.rpartition(" at ")
+        if role and company and len(company) <= 60:
+            return _text(company, 255), role
+    return "", title
+
+
+def _map_nodesk(item: dict) -> dict | None:
+    company, title = _nodesk_company_title(item.get("title"))
+    link = _text(item.get("link"), 1000)
+    guid = _text(item.get("guid"), 500)
+    if not title or not (guid or link):
+        return None
+    return {
+        "title": title,
+        "company": company,
+        "type": "it",
+        "category": it_category(title, "", remote=True),
+        "description": _plain_text(item.get("description"), 1500)
+        or "Remote job listing published on NoDesk.",
+        "location": "Remote",
+        "salary": "",
+        "apply_link": link or guid or "https://nodesk.co/remote-jobs/",
+        "deadline": None,
+        "source": "nodesk",
+        "external_id": guid or link,
+        "posted_at": _wwr_date(item.get("pubdate")),
+    }
+
+
+REMOTE_FEEDS: list[FeedSpec] = [
+    FeedSpec(key="remoteok", label="RemoteOK", fetch=_fetch_remoteok, map_item=_map_remoteok),
+    FeedSpec(key="remotive", label="Remotive", fetch=_fetch_remotive, map_item=_map_remotive),
+    FeedSpec(
+        key="weworkremotely",
+        label="WeWorkRemotely",
+        fetch=_fetch_wwr,
+        map_item=_map_wwr,
+    ),
+    FeedSpec(key="nodesk", label="NoDesk", fetch=_fetch_nodesk, map_item=_map_nodesk),
+]
+
+
+# Every remote job website learners actually ask for. Boards this app crawls
+# into the Remote tab are marked live; the rest are shown as directory cards
+# that link out (paywalled, login-walled or JS-only sites cannot be scraped).
+REMOTE_SITES: list[dict] = [
+    {
+        "name": "We Work Remotely",
+        "url": "https://weworkremotely.com",
+        "blurb": "Largest remote-only board; screened programming, design, marketing roles.",
+        "live": True,
+    },
+    {
+        "name": "RemoteOK",
+        "url": "https://remoteok.com",
+        "blurb": "High-volume global tech board, nomad-friendly roles.",
+        "live": True,
+    },
+    {
+        "name": "Remotive",
+        "url": "https://remotive.com",
+        "blurb": "Frequently refreshed remote jobs with global filters.",
+        "live": True,
+    },
+    {
+        "name": "NoDesk",
+        "url": "https://nodesk.co",
+        "blurb": "Curated remote jobs, guides and company profiles.",
+        "live": True,
+    },
+    {
+        "name": "LinkedIn",
+        "url": "https://www.linkedin.com/jobs/",
+        "blurb": "Corporate remote openings plus networking.",
+        "live": True,
+    },
+    {
+        "name": "Remote.co",
+        "url": "https://remote.co",
+        "blurb": "Curated listings: support, design, data entry, writing.",
+        "live": False,
+    },
+    {
+        "name": "FlexJobs",
+        "url": "https://www.flexjobs.com",
+        "blurb": "Hand-screened verified remote roles (subscription).",
+        "live": False,
+    },
+    {
+        "name": "Surely Remote",
+        "url": "https://surelyremote.com",
+        "blurb": "Hand-screened work-from-home jobs for Indian professionals.",
+        "live": False,
+    },
+    {
+        "name": "Wellfound",
+        "url": "https://wellfound.com",
+        "blurb": "Startup and tech remote roles with salary upfront.",
+        "live": False,
+    },
+    {
+        "name": "Upwork",
+        "url": "https://www.upwork.com",
+        "blurb": "Contract and long-term freelance remote work.",
+        "live": False,
+    },
+    {
+        "name": "Fiverr",
+        "url": "https://www.fiverr.com",
+        "blurb": "Gig-style project tasks: editing, design, writing.",
+        "live": False,
+    },
+]
+
+
+# --------------------------------------------------------------------------
 # source definitions
 # --------------------------------------------------------------------------
 
@@ -587,6 +906,55 @@ def available_sources() -> list[dict]:
     ]
 
 
+# Remote-only Apify queries. Kept out of SOURCES so the daily sync stays cheap;
+# they run on demand through the "remote" track. The LinkedIn/Indeed mappers
+# already detect remote flags and titles, so no new mappers are needed.
+_LINKEDIN_REMOTE_ROLES = [
+    "remote software engineer",
+    "remote frontend developer",
+    "remote backend developer",
+    "remote full stack developer",
+    "remote python developer",
+    "remote react developer",
+    "remote devops engineer",
+    "remote data analyst",
+]
+
+_INDEED_REMOTE_ROLES = [
+    "software engineer",
+    "frontend developer",
+    "backend developer",
+    "full stack developer",
+    "python developer",
+    "data analyst",
+]
+
+REMOTE_SOURCES: list[SourceSpec] = [
+    *[
+        SourceSpec(
+            key="linkedin-remote",
+            label="LinkedIn Remote",
+            job_type="it",
+            actor="curious_coder/linkedin-jobs-scraper",
+            build_input=_linkedin_input(role, cap=6),
+            map_item=_map_linkedin,
+        )
+        for role in _LINKEDIN_REMOTE_ROLES
+    ],
+    *[
+        SourceSpec(
+            key="indeed-remote",
+            label="Indeed Remote",
+            job_type="it",
+            actor="curious_coder/indeed-scraper",
+            build_input=_indeed_input(role, "Remote", cap=8),
+            map_item=_map_indeed,
+        )
+        for role in _INDEED_REMOTE_ROLES
+    ],
+]
+
+
 # --------------------------------------------------------------------------
 # Apify client
 # --------------------------------------------------------------------------
@@ -772,6 +1140,22 @@ def sync_jobs(db: Session, tracks: list[str] | None = None) -> dict:
                 candidates.append(row)
 
     candidates = _dedupe(candidates)
+    stats = _persist_candidates(db, candidates, tuple(wanted))
+
+    return {
+        "ok": bool(candidates),
+        "started_at": started_at.isoformat(),
+        "duration_seconds": round(time.monotonic() - started_monotonic, 1),
+        "sources": sorted(per_run, key=lambda item: (item["job_type"], item["key"])),
+        **stats,
+    }
+
+
+def _persist_candidates(
+    db: Session, candidates: list[dict], wanted: tuple[str, ...]
+) -> dict:
+    """Dedupe, upsert, purge seeds and retire expired rows. Shared by both syncs."""
+    candidates = _dedupe(candidates)
     now = naive_utc_now()
 
     for row in candidates:
@@ -827,16 +1211,97 @@ def sync_jobs(db: Session, tracks: list[str] | None = None) -> dict:
     )
 
     return {
-        "ok": bool(candidates),
-        "started_at": started_at.isoformat(),
-        "duration_seconds": round(time.monotonic() - started_monotonic, 1),
-        "sources": sorted(per_run, key=lambda item: (item["job_type"], item["key"])),
         "created": created,
         "updated": updated,
         "purged_seed_jobs": purged,
         "retired_expired": retired,
         "synced_total": len(candidates),
-        "jobs_total": total_in_db,
+        "jobs_total": int(total_in_db),
+    }
+
+
+def sync_remote_jobs(db: Session) -> dict:
+    """Crawl the remote boards: Apify remote queries plus the boards' own feeds."""
+    started_monotonic = time.monotonic()
+    started_at = naive_utc_now()
+
+    if not settings.apify_token:
+        raise ValueError("APIFY_TOKEN is not configured - set it in .env to enable live job sync.")
+
+    per_run: list[dict] = []
+    fetched: list[tuple[SourceSpec | FeedSpec, list[dict]]] = []
+
+    # Same throttle discipline as the main sync: the FREE plan 402s on bursts.
+    max_workers = min(4, max(1, len(REMOTE_SOURCES)))
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {
+            pool.submit(_fetch_source, spec, settings.apify_max_items): spec
+            for spec in REMOTE_SOURCES
+        }
+        for future in as_completed(futures):
+            spec = futures[future]
+            try:
+                _, items, meta = future.result()
+            except Exception as exc:  # noqa: BLE001 - report every source failure to the admin
+                per_run.append(
+                    {
+                        "key": spec.key,
+                        "label": spec.label,
+                        "job_type": spec.job_type,
+                        "actor": spec.actor,
+                        "ok": False,
+                        "error": _safe_error(exc),
+                    }
+                )
+            else:
+                meta["ok"] = True
+                per_run.append(meta)
+                fetched.append((spec, items))
+
+    # Direct board feeds: public HTTP, no actor runs, seconds not minutes.
+    with _public_client() as client:
+        for feed in REMOTE_FEEDS:
+            try:
+                items = feed.fetch(client)
+            except Exception as exc:  # noqa: BLE001 - one dead feed must not kill the sync
+                per_run.append(
+                    {
+                        "key": feed.key,
+                        "label": feed.label,
+                        "job_type": "it",
+                        "ok": False,
+                        "error": _safe_error(exc),
+                    }
+                )
+            else:
+                per_run.append(
+                    {
+                        "key": feed.key,
+                        "label": feed.label,
+                        "job_type": "it",
+                        "ok": True,
+                        "fetched": len(items),
+                    }
+                )
+                fetched.append((feed, items))
+
+    candidates: list[dict] = []
+    for spec, items in fetched:
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            row = spec.map_item(item)
+            if row:
+                candidates.append(row)
+
+    stats = _persist_candidates(db, candidates, ("it",))
+
+    return {
+        "ok": bool(candidates),
+        "started_at": started_at.isoformat(),
+        "duration_seconds": round(time.monotonic() - started_monotonic, 1),
+        "sources": sorted(per_run, key=lambda item: (item["job_type"], item["key"])),
+        **stats,
     }
 
 

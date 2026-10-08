@@ -23,7 +23,7 @@ from app.schemas.admin import (
     JobAdminUpdate,
 )
 from app.services.common import job_brief, naive_utc_now, profile_brief, unique_slug, user_brief
-from app.services.job_sync import sync_jobs, sync_status
+from app.services.job_sync import sync_jobs, sync_remote_jobs, sync_status
 
 router = APIRouter(tags=["admin"])
 
@@ -190,13 +190,20 @@ def admin_sync_jobs(
     tracks: list[str] | None = None
     if track:
         tracks = [part.strip() for part in track.split(",") if part.strip()]
-        unknown = sorted(set(tracks) - {"government", "it"})
+        unknown = sorted(set(tracks) - {"government", "it", "remote"})
         if unknown:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Unknown track(s): {', '.join(unknown)}",
             )
+        if "remote" in tracks and len(tracks) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Run the 'remote' track on its own: ?track=remote.",
+            )
     try:
+        if tracks == ["remote"]:
+            return sync_remote_jobs(db)
         return sync_jobs(db, tracks)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

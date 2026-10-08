@@ -10,6 +10,7 @@ from app.models import Job, SavedJob, User
 from app.schemas.misc import SaveJobRequest
 from app.services.common import job_brief
 from app.services.job_taxonomy import locations_with_counts, roles_with_counts
+from app.services.job_sync import REMOTE_SITES
 
 router = APIRouter(tags=["jobs"])
 
@@ -134,10 +135,12 @@ def list_jobs(
     }
 
 
-def _facet_counts(db: Session, type: str | None = None) -> dict:
+def _facet_counts(db: Session, type: str | None = None, category: str | None = None) -> dict:
     stmt = select(Job.role, Job.city, Job.category).where(Job.is_published.is_(True))
     if type:
         stmt = stmt.where(Job.type == type)
+    if category:
+        stmt = stmt.where(Job.category == category)
     rows = db.execute(stmt).all()
     return {
         "roles": roles_with_counts(role for role, _city, _category in rows),
@@ -179,7 +182,14 @@ def job_facets(db: DbSession) -> dict:
         "all": _facet_counts(db),
         "government": _facet_counts(db, "government"),
         "it": _facet_counts(db, "it"),
+        "remote": _facet_counts(db, "it", "remote"),
     }
+
+
+@router.get("/remote-sites")
+def remote_job_sites() -> dict:
+    """Every remote job website: crawled boards plus directory links."""
+    return {"sites": REMOTE_SITES}
 
 
 @router.get("/{id}")
