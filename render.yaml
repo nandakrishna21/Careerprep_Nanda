@@ -1,0 +1,43 @@
+# Render blueprint — CareerPrep Hub API (free-tier web service).
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Steps:
+#   1. Create a free Neon project (https://neon.tech) and copy the pooled
+#      connection string (it already contains the password).
+#   2. Push this repo to GitHub and create a new Blueprint on Render from it.
+#   3. Set the `sync: false` values below from the Render dashboard:
+#        DATABASE_URL  = Neon connection string
+#        GEMINI_API_KEY = Google AI Studio key
+#        APIFY_TOKEN   = Apify API token (optional; enables job sync)
+#        ADMIN_EMAIL / ADMIN_PASSWORD = the bootstrap admin login
+#   4. Point CORS_ORIGINS at your Vercel frontend URL.
+services:
+  - type: web
+    name: careerprep-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://careerprep-hub.vercel.app,http://localhost:5173,http://localhost:3000
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: APIFY_TOKEN
+        sync: false
+      - key: APIFY_MAX_ITEMS
+        value: 25
+      - key: ADMIN_EMAIL
+        value: admin@careerprep.com
+      - key: ADMIN_PASSWORD
+        sync: false

@@ -1,0 +1,24 @@
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.local
+*.sqlite3
+*.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+htmlcov/
+.DS_Store
+*.log
+.idea/
+.vscode/
+
+# One-off dev probe scripts
+backend/_check_*.py
+backend/*.db

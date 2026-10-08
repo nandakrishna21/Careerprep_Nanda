@@ -1,0 +1,16 @@
+{
+  "name": "careerprep-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-powered Government Exam & IT Career preparation platform",
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:web": "npm --prefix frontend run dev",
+    "dev:api": "cd backend && python -m uvicorn app.main:app --reload --port 8000",
+    "build": "npm --prefix frontend run build",
+    "seed": "cd backend && python -m app.seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
