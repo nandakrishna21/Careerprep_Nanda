@@ -31,6 +31,44 @@ VOCAB: Bank = {
     ],
 }
 
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+VOCAB["beginner"] += [
+    ("Choose the synonym of 'Brave'.", ["Cowardly", "Courageous", "Timid", "Weak"], 1, "Brave means courageous."),
+    ("Choose the antonym of 'Success'.", ["Victory", "Failure", "Achievement", "Progress"], 1, "Success is the opposite of failure."),
+    ("What is the one-word substitution for 'a place where birds are kept'?", ["Apiary", "Aviary", "Aquarium", "Stable"], 1, "An aviary houses birds; an apiary houses bees."),
+    ("Choose the synonym of 'Honest'.", ["Truthful", "Cunning", "Rude", "Lazy"], 0, "Honest means truthful."),
+    ("Choose the antonym of 'Expand'.", ["Enlarge", "Contract", "Extend", "Swell"], 1, "Expand means to grow; contract means to shrink."),
+    ("What does the idiom 'to bite the dust' mean?", ["To eat quickly", "To fail or be defeated", "To work hard", "To travel far"], 1, "It means to fail or suffer defeat."),
+    ("Choose the synonym of 'Beautiful'.", ["Ugly", "Pretty", "Plain", "Dull"], 1, "Beautiful means pretty."),
+    ("Choose the antonym of 'Begin'.", ["Start", "Commence", "End", "Open"], 2, "Begin means to start; end is its opposite."),
+    ("What is the one-word substitution for 'a doctor for animals'?", ["Dentist", "Veterinarian", "Surgeon", "Physician"], 1, "A veterinarian treats animals."),
+    ("What does the idiom 'to cry over spilt milk' mean?", ["To clean up", "To waste time regretting the past", "To drink milk", "To feel hungry"], 1, "It means regretting something that cannot be undone."),
+]
+VOCAB["intermediate"] += [
+    ("Choose the synonym of 'Candid'.", ["Rude", "Frank", "Shy", "Clever"], 1, "Candid means frank and outspoken."),
+    ("Choose the antonym of 'Scarce'.", ["Rare", "Abundant", "Costly", "Short"], 1, "Scarce means in short supply; abundant is its opposite."),
+    ("What is the one-word substitution for 'a person who can use both hands equally well'?", ["Versatile", "Ambidextrous", "Ambivalent", "Skilful"], 1, "Ambidextrous describes equal skill with both hands."),
+    ("Choose the synonym of 'Resilient'.", ["Fragile", "Flexible", "Rigid", "Weak"], 1, "Resilient means able to recover quickly - flexible in spirit."),
+    ("Choose the antonym of 'Vague'.", ["Unclear", "Definite", "Hazy", "Dim"], 1, "Vague means unclear; definite is its opposite."),
+    ("What does the idiom 'to hit the nail on the head' mean?", ["To hurt oneself", "To say exactly the right thing", "To work with tools", "To make a loud noise"], 1, "It means to say or do exactly the right thing."),
+    ("Choose the synonym of 'Abandon'.", ["Keep", "Desert", "Hold", "Cherish"], 1, "Abandon means to desert or leave behind."),
+    ("Choose the antonym of 'Victory'.", ["Triumph", "Defeat", "Success", "Glory"], 1, "Victory is the opposite of defeat."),
+    ("What is the one-word substitution for 'a person who speaks many languages'?", ["Orator", "Polyglot", "Linguist", "Bilingual"], 1, "A polyglot speaks several languages (a linguist studies them)."),
+    ("What does the idiom 'once in a blue moon' mean?", ["Every night", "Very rarely", "On festivals", "At noon"], 1, "It means something that happens very rarely."),
+]
+VOCAB["advanced"] += [
+    ("Choose the synonym of 'Ubiquitous'.", ["Rare", "Omnipresent", "Hidden", "Scarce"], 1, "Ubiquitous means present everywhere - omnipresent."),
+    ("Choose the antonym of 'Mitigate'.", ["Alleviate", "Aggravate", "Lessen", "Calm"], 1, "Mitigate means to lessen; aggravate means to worsen."),
+    ("What is the one-word substitution for 'fear of confined spaces'?", ["Claustrophobia", "Agoraphobia", "Hydrophobia", "Acrophobia"], 0, "Claustrophobia is the fear of enclosed spaces."),
+    ("Choose the synonym of 'Pragmatic'.", ["Idealistic", "Practical", "Theoretical", "Dogmatic"], 1, "Pragmatic means practical rather than idealistic."),
+    ("Choose the antonym of 'Docile'.", ["Obedient", "Unruly", "Gentle", "Quiet"], 1, "Docile means easily managed; unruly is its opposite."),
+    ("What does the idiom 'to steal someone's thunder' mean?", ["To rob a person", "To take attention away from someone", "To make loud sounds", "To copy ideas"], 1, "It means to draw attention away from someone else's achievement."),
+    ("Choose the synonym of 'Enigmatic'.", ["Clear", "Mysterious", "Simple", "Open"], 1, "Enigmatic means mysterious."),
+    ("Choose the antonym of 'Frugal'.", ["Thrifty", "Wasteful", "Careful", "Modest"], 1, "Frugal means thrifty; wasteful is its opposite."),
+    ("What is the one-word substitution for 'the art of beautiful handwriting'?", ["Calligraphy", "Typography", "Stenography", "Cartography"], 0, "Calligraphy is the art of beautiful handwriting."),
+    ("What does the idiom 'to cut corners' mean?", ["To take shortcuts to save effort", "To design buildings", "To drive fast", "To divide shares"], 0, "It means doing something cheaply or quickly by skipping steps."),
+]
+
 GRAMMAR: Bank = {
     "beginner": [
         ("Choose the correct sentence about her school routine.", ["She go to school every day.", "She goes to school every day.", "She going to school every day.", "She is go to school every day."], 1, "Third-person singular subjects take 'goes' in the simple present."),
@@ -58,6 +96,38 @@ GRAMMAR: Bank = {
     ],
 }
 
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+GRAMMAR["beginner"] += [
+    ("Fill in the blank: She ____ to school by bus.", ["go", "goes", "going", "gone"], 1, "Third-person singular 'she' takes 'goes'."),
+    ("Choose the correct article: He is ____ honest man.", ["a", "an", "the", "no article"], 1, "'Honest' starts with a vowel sound, so it takes 'an'."),
+    ("Fill in the blank: There ____ many books on the table.", ["is", "are", "was", "has"], 1, "'Many books' is plural and takes 'are'."),
+    ("Choose the correct preposition: She is afraid ____ spiders.", ["from", "of", "with", "by"], 1, "The fixed collocation is 'afraid of'."),
+    ("Fill in the blank: The cat ____ on the mat.", ["sit", "sits", "sitting", "are sitting"], 1, "Third-person singular 'cat' takes 'sits'."),
+    ("Choose the correct article: She is ____ hour late.", ["a", "an", "the", "no article"], 1, "'Hour' starts with a vowel sound, so it takes 'an'."),
+    ("Fill in the blank: We ____ football every evening.", ["plays", "play", "playing", "played"], 1, "'We' takes the base verb 'play' for habits."),
+    ("Choose the correct preposition: He is married ____ my sister.", ["with", "to", "by", "for"], 1, "The correct collocation is 'married to'."),
+]
+GRAMMAR["intermediate"] += [
+    ("Fill in the blank: She ____ here since 2015.", ["lives", "has been living", "is living", "live"], 1, "'Since 2015' with a continuing action needs the present perfect continuous."),
+    ("Choose the correct sentence with 'one of'.", ["One of the players are injured.", "One of the players is injured.", "One of the players were injured.", "One of players is injured."], 1, "'One of' takes a singular verb."),
+    ("Fill in the blank: No sooner had we reached the station ____ the train left.", ["when", "than", "then", "that"], 1, "The pair is 'no sooner ... than'."),
+    ("Choose the correct voice: 'Someone stole my bicycle.'", ["My bicycle was stolen.", "My bicycle is stolen.", "My bicycle has stolen.", "My bicycle was stole."], 0, "Simple past active becomes 'was + past participle' in the passive."),
+    ("Fill in the blank: By next year, he ____ his degree.", ["completes", "will have completed", "has completed", "is completing"], 1, "'By next year' signals the future perfect."),
+    ("Choose the correct sentence with 'each'.", ["Each of the boys have a pen.", "Each of the boys has a pen.", "Each of the boys are having a pen.", "Each the boys has a pen."], 1, "'Each of' is always followed by a singular verb."),
+    ("Fill in the blank: Hardly had the match started ____ it began to rain.", ["than", "when", "then", "that"], 1, "The correct pair is 'hardly ... when'."),
+    ("Choose the correct voice: 'The teacher praised the students.'", ["The students were praised by the teacher.", "The students are praised by the teacher.", "The students have been praised by the teacher.", "The teacher was praised by the students."], 0, "Simple past active becomes 'was/were + past participle' in the passive."),
+]
+GRAMMAR["advanced"] += [
+    ("Fill in the blank: But for your help, I ____ the exam.", ["would fail", "would have failed", "will fail", "fail"], 1, "'But for' refers to a past condition, needing 'would have + past participle'."),
+    ("Choose the correct sentence with inversion.", ["Never I have seen such courage.", "Never have I seen such courage.", "I have never seen such courage hardly.", "Never I had seen such courage."], 1, "Negative adverbs at the front trigger inversion: 'Never have I seen'."),
+    ("Identify the error: 'The sceneries of Kashmir are beautiful.'", ["The sceneries", "of Kashmir", "are beautiful", "No error"], 0, "'Scenery' is uncountable - it should be 'the scenery of Kashmir is beautiful'."),
+    ("Choose the correct sentence with 'as well as'.", ["Ram as well as his friends were invited.", "Ram as well as his friends was invited.", "Ram as well as his friends are invited.", "Ram as well his friends was invited."], 1, "With 'as well as', the verb agrees with the first subject: 'Ram ... was invited'."),
+    ("Fill in the blank: Had I known the truth, I ____ differently.", ["would act", "would have acted", "will act", "act"], 1, "Third conditional: 'had + past participle' pairs with 'would have + past participle'."),
+    ("Choose the correct sentence with 'seldom'.", ["Seldom I go there.", "Seldom do I go there.", "I seldom goes there.", "Seldom I does go there."], 1, "Fronted 'seldom' triggers inversion: 'Seldom do I go'."),
+    ("Identify the error: 'Scarcely had he finished his speech then the audience applauded.'", ["Scarcely had", "finished", "then", "applauded"], 2, "The pair is 'scarcely ... when', so 'then' is wrong."),
+    ("Choose the correct sentence with 'no sooner'.", ["No sooner did the bell ring when the students left.", "No sooner had the bell rung than the students left.", "No sooner the bell had rung than the students left.", "No sooner did the bell rung than the students left."], 1, "'No sooner ... than' with past perfect and inversion is correct."),
+]
+
 ERROR_SPOTTING: Bank = {
     "beginner": [
         ("Find the error: (a) Ram and Sita / (b) goes to school / (c) every day. / (d) No error", ["(a)", "(b)", "(c)", "(d)"], 1, "'Ram and Sita' is plural, so the verb should be 'go', not 'goes'."),
@@ -84,6 +154,38 @@ ERROR_SPOTTING: Bank = {
         ("Find the error: (a) Not only the students / (b) but also the teacher / (c) were present. / (d) No error", ["(a)", "(b)", "(c)", "(d)"], 2, "With 'not only ... but also', the verb agrees with the nearer subject — 'the teacher was present'."),
     ],
 }
+
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+ERROR_SPOTTING["beginner"] += [
+    ("Find the error: (a) She do not / (b) eat meat. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 0, "'She' takes 'does not'."),
+    ("Find the error: (a) They was playing / (b) in the field. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 0, "'They' takes 'were playing'."),
+    ("Find the error: (a) I have / (b) many works to do. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "'Work' is uncountable - it should be 'much work'."),
+    ("Find the error: (a) He is / (b) elder than me. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "'Elder' takes 'to', not 'than' - 'elder to me'."),
+    ("Find the error: (a) The cat drank / (b) it's milk. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "Possessive 'its' has no apostrophe; 'it's' means 'it is'."),
+    ("Find the error: (a) Me and my friend / (b) went home. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 0, "Use the subject pronoun: 'My friend and I went home'."),
+    ("Find the error: (a) She can / (b) sings well. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "Modals take the base verb - 'can sing'."),
+    ("Find the error: (a) There is / (b) five apples. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 0, "'Five apples' is plural - 'there are five apples'."),
+]
+ERROR_SPOTTING["intermediate"] += [
+    ("Find the error: (a) Neither Ram nor Shyam / (b) have arrived. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "With 'neither...nor', the verb agrees with the nearer subject - 'has arrived'."),
+    ("Find the error: (a) He congratulated me / (b) for my success. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "The correct collocation is 'congratulate on' - 'on my success'."),
+    ("Find the error: (a) I am living here / (b) since five years. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "A duration takes 'for' - 'for five years'."),
+    ("Find the error: (a) The committee / (b) have decided. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "A committee acting as one body takes 'has decided'."),
+    ("Find the error: (a) She prefers coffee / (b) than tea. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "'Prefer' takes 'to' - 'prefers coffee to tea'."),
+    ("Find the error: (a) He is working hard / (b) lest he may fail. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "'Lest' already expresses purpose and takes 'should' - 'lest he should fail'."),
+    ("Find the error: (a) The number of students / (b) are going up. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "'The number of' is singular - 'is going up'."),
+    ("Find the error: (a) I asked him / (b) that where he lived. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "'Asked' already introduces the clause - drop 'that'."),
+]
+ERROR_SPOTTING["advanced"] += [
+    ("Find the error: (a) No sooner had the thief seen the police / (b) when he ran away. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "The pair is 'no sooner ... than'."),
+    ("Find the error: (a) Scarcely he had opened the door / (b) when the phone rang. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 0, "Fronted 'scarcely' needs inversion - 'scarcely had he opened'."),
+    ("Find the error: (a) Being a rainy day, / (b) we stayed indoors. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 0, "Dangling participle - it should be 'It being a rainy day, we stayed indoors'."),
+    ("Find the error: (a) The teacher, as well as the students, / (b) were present. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "The verb agrees with 'the teacher' - 'was present'."),
+    ("Find the error: (a) He denied / (b) to take the money. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "'Deny' takes a gerund - 'denied taking the money'."),
+    ("Find the error: (a) One should keep / (b) his promises. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "'One' pairs with possessive 'one's' - 'keep one's promises'."),
+    ("Find the error: (a) The jury were / (b) divided in its opinion. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "A divided jury takes 'their' - 'divided in their opinion'."),
+    ("Find the error: (a) He is one of those men / (b) who is always on time. / (c) No error", ["(a)", "(b)", "(c)", "(a) and (b)"], 1, "'Those men who' is plural - 'who are always on time'."),
+]
 
 RC_PASSAGES = {
     "beginner": (

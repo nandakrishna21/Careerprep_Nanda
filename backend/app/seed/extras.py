@@ -127,6 +127,85 @@ PYQ_SPECS: list[dict] = [
     {"slug": "pyq-state-2023-science", "title": "State Exams 2023 — Science PYQs", "exam_slug": "state-government-exams", "topic_slug": "science", "kind": "ga", "year": 2023, "count": 15},
 ]
 
+# Year-wise PYQ papers (2020-2026): one 15-question mixed-subject set per exam
+# per year, mirroring each exam family's real paper weightage. Topics rotate so
+# neighbouring years share as little as possible.
+PYQ_YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026]
+
+_QUANT_ROT = [
+    "percentage", "profit-and-loss", "ratio", "time-and-work",
+    "speed-distance-time", "simple-interest", "compound-interest",
+    "number-system", "algebra", "geometry",
+]
+_REAS_ROT = [
+    "coding-decoding", "analogy", "blood-relations",
+    "syllogism", "seating-arrangement", "puzzles",
+]
+_ENG_ROT = ["vocabulary", "grammar", "error-spotting"]
+_GA_ROT = ["history", "geography", "polity", "economy", "science"]
+
+_SUBJECT_ROT = {"quant": _QUANT_ROT, "reasoning": _REAS_ROT, "english": _ENG_ROT, "ga": _GA_ROT}
+
+# exam_slug -> (display name, difficulty, negative marks, [(subject, count)])
+PYQ_PAPER_PLAN: dict[str, tuple[str, str, float, list[tuple[str, int]]]] = {
+    "ssc-cgl": ("SSC CGL", "intermediate", 0.5, [("quant", 6), ("reasoning", 4), ("english", 2), ("ga", 3)]),
+    "ssc-chsl": ("SSC CHSL", "intermediate", 0.5, [("quant", 6), ("reasoning", 4), ("english", 2), ("ga", 3)]),
+    "ssc-mts": ("SSC MTS", "beginner", 0.5, [("quant", 6), ("reasoning", 4), ("english", 2), ("ga", 3)]),
+    "ssc-gd": ("SSC GD", "beginner", 0.5, [("quant", 6), ("reasoning", 4), ("english", 2), ("ga", 3)]),
+    "ibps-po": ("IBPS PO", "intermediate", 0.25, [("quant", 6), ("reasoning", 5), ("english", 4)]),
+    "ibps-clerk": ("IBPS Clerk", "intermediate", 0.25, [("quant", 6), ("reasoning", 5), ("english", 4)]),
+    "sbi-po": ("SBI PO", "intermediate", 0.25, [("quant", 6), ("reasoning", 5), ("english", 4)]),
+    "sbi-clerk": ("SBI Clerk", "intermediate", 0.25, [("quant", 6), ("reasoning", 5), ("english", 4)]),
+    "rbi-assistant": ("RBI Assistant", "intermediate", 0.25, [("quant", 6), ("reasoning", 5), ("english", 4)]),
+    "rrb-ntpc": ("RRB NTPC", "intermediate", 0.33, [("quant", 5), ("reasoning", 4), ("ga", 6)]),
+    "rrb-group-d": ("RRB Group D", "beginner", 0.33, [("quant", 5), ("reasoning", 4), ("ga", 6)]),
+    "upsc-foundation": ("UPSC Foundation", "advanced", 0.66, [("ga", 8), ("quant", 4), ("reasoning", 3)]),
+    "state-government-exams": ("State Government Exams", "intermediate", 0.25, [("quant", 4), ("reasoning", 3), ("english", 3), ("ga", 5)]),
+}
+
+
+def _split_chunks(count: int) -> list[int]:
+    if count >= 8:
+        return [3, 3, 2]
+    if count == 6:
+        return [3, 3]
+    if count == 5:
+        return [3, 2]
+    if count == 4:
+        return [2, 2]
+    return [count]
+
+
+def _build_pyq_paper_specs() -> list[dict]:
+    specs: list[dict] = []
+    for exam_idx, (exam_slug, (name, difficulty, negative, plan)) in enumerate(
+        PYQ_PAPER_PLAN.items()
+    ):
+        for year_idx, year in enumerate(PYQ_YEARS):
+            mix: list[tuple[str, str, int]] = []
+            for subj_pos, (subject, count) in enumerate(plan):
+                rotation = _SUBJECT_ROT[subject]
+                offset = (exam_idx * 3 + year_idx * 2 + subj_pos) % len(rotation)
+                for step, chunk in enumerate(_split_chunks(count)):
+                    topic = rotation[(offset + step) % len(rotation)]
+                    mix.append((subject, topic, chunk))
+            specs.append(
+                {
+                    "slug": f"pyq-{exam_slug}-{year}",
+                    "title": f"{name} {year} PYQs",
+                    "exam_slug": exam_slug,
+                    "year": year,
+                    "difficulty": difficulty,
+                    "negative": negative,
+                    "count": 15,
+                    "mix": mix,
+                }
+            )
+    return specs
+
+
+PYQ_SPECS.extend(_build_pyq_paper_specs())
+
 CURRENT_AFFAIRS: list[dict] = [
     {
         "slug": "daily-current-affairs-2023-08-24",
@@ -403,6 +482,14 @@ def build_it_mock_sections(spec: dict) -> tuple[list[dict], list[QuestionDict]]:
 
 
 def build_pyq_questions(spec: dict) -> list[QuestionDict]:
+    if "mix" in spec:
+        out: list[QuestionDict] = []
+        for kind, topic_slug, count in spec["mix"]:
+            pool = _topic_pool(kind, topic_slug)
+            picked = sample(pool, count, f"{spec['slug']}-{topic_slug}")
+            topic_title = topic_slug.replace("-", " ").title()
+            out.extend({**item, "tags": [topic_title]} for item in picked)
+        return out
     pool = _topic_pool(spec["kind"], spec["topic_slug"])
     picked = sample(pool, spec["count"], spec["slug"])
     topic_title = spec["topic_slug"].replace("-", " ").title()

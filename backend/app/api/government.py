@@ -83,6 +83,7 @@ def list_pyqs(
     exam: str | None = None,
     topic: str | None = None,
     difficulty: str | None = None,
+    year: int | None = None,
 ) -> list[dict]:
     stmt = select(Quiz).where(Quiz.quiz_type == "pyq", Quiz.is_published.is_(True))
     if difficulty:
@@ -99,6 +100,14 @@ def list_pyqs(
         )
     stmt = stmt.order_by(Quiz.id)
     quizzes = db.scalars(stmt).all()
+    if year is not None:
+        # The year lives in the JSON meta column; filter in Python so the query
+        # stays portable across SQLite and PostgreSQL.
+        quizzes = [
+            quiz
+            for quiz in quizzes
+            if isinstance(quiz.meta, dict) and quiz.meta.get("year") == year
+        ]
     items = []
     for quiz in quizzes:
         items.append(

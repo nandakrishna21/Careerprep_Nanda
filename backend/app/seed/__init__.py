@@ -302,9 +302,14 @@ def _seed_exams(db: Session) -> dict[str, int]:
 
 def _seed_pyqs(db: Session, exam_ids: dict[str, int]) -> None:
     for spec in extras.PYQ_SPECS:
-        topic = _existing_slug(db, Topic, spec["topic_slug"])
-        if topic is None:
-            continue
+        topic_id = None
+        default_tags: list[str] = []
+        if "topic_slug" in spec:
+            topic = _existing_slug(db, Topic, spec["topic_slug"])
+            if topic is None:
+                continue
+            topic_id = topic.id
+            default_tags = [topic.title]
         questions = extras.build_pyq_questions(spec)
         _create_quiz(
             db,
@@ -312,11 +317,11 @@ def _seed_pyqs(db: Session, exam_ids: dict[str, int]) -> None:
             slug=spec["slug"],
             quiz_type="pyq",
             questions=questions,
-            difficulty="intermediate",
+            difficulty=spec.get("difficulty", "intermediate"),
             duration_minutes=20,
-            negative_marks=0.25,
-            default_tags=[topic.title],
-            topic_id=topic.id,
+            negative_marks=spec.get("negative", 0.25),
+            default_tags=default_tags,
+            topic_id=topic_id,
             exam_id=exam_ids[spec["exam_slug"]],
             meta={"year": spec["year"], "exam": spec["exam_slug"]},
         )

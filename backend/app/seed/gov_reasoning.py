@@ -71,6 +71,26 @@ BLOOD: Bank = {
     ],
 }
 
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+BLOOD["beginner"] += [
+    ("Rahul's mother is the only daughter of Seema's father. How is Seema related to Rahul?", ["Mother", "Aunt", "Sister", "Grandmother"], 0, "Seema's father's only daughter is Seema herself, and she is Rahul's mother."),
+    ("Vikas is the son of Anil. Anil is the husband of Sunita. How is Vikas related to Sunita?", ["Nephew", "Son", "Brother", "Father"], 1, "Anil and Sunita are Vikas's parents, so Vikas is Sunita's son."),
+    ("A girl introduces a boy as the son of her grandmother's only daughter. How is the boy related to the girl?", ["Brother", "Cousin", "Nephew", "Son"], 0, "Grandmother's only daughter is the girl's mother; her son is the girl's brother."),
+    ("Mohan's father has three sons: Ram, Shyam and ...? Name the third son.", ["Mohan", "Rohan", "Sohan", "Cannot say"], 0, "Mohan's father has three sons and Mohan is one of them, so the third is Mohan himself."),
+]
+BLOOD["intermediate"] += [
+    ("A and B are brothers. C and D are sisters. A's son is D's brother. How is B related to C?", ["Uncle", "Father", "Brother", "Cousin"], 0, "A's son is D's brother, so A is the father of C and D; B, A's brother, is their uncle."),
+    ("Suresh's sister is the wife of Ramesh. Ramesh is the father of Kiran. How is Suresh related to Kiran?", ["Uncle", "Father", "Brother", "Grandfather"], 0, "Suresh's sister is Kiran's mother, so Suresh is Kiran's maternal uncle."),
+    ("Pointing to a woman, Arjun said, 'She is the mother of my father's only son's wife.' How is the woman related to Arjun?", ["Mother-in-law", "Mother", "Aunt", "Sister"], 0, "Father's only son is Arjun himself; his wife's mother is Arjun's mother-in-law."),
+    ("P's father is Q's son. R is Q's daughter. How is P related to R?", ["Nephew or Niece", "Son", "Brother", "Cousin"], 0, "P's father and R are both Q's children, so P is R's nephew or niece."),
+]
+BLOOD["advanced"] += [
+    ("If A + B means A is the father of B, A - B means A is the wife of B, and A x B means A is the brother of B, then P + Q - R x S means?", ["P is S's father-in-law", "P is S's father", "R is P's son", "S is P's nephew"], 0, "Q is P's child; Q is R's wife; R and S are brothers. So S is P's child's brother-in-law, i.e., P is S's father-in-law."),
+    ("M is N's sister. O is N's father. P is O's mother. Q is P's husband. How is Q related to M?", ["Grandfather", "Father", "Uncle", "Brother"], 0, "O is M's father; P is O's mother (M's grandmother); Q is P's husband, hence M's grandfather."),
+    ("Kavya's brother's wife's only brother is Arun. How is Arun related to Kavya?", ["Brother", "Brother-in-law", "Cousin", "Uncle"], 1, "Brother's wife is Kavya's sister-in-law; her only brother Arun is Kavya's brother-in-law."),
+    ("A family of six P, Q, R, S, T, U has two married couples. P is the father of Q. S is Q's wife. T is the sister of S. U is the son of P. R is the daughter-in-law of P. How is R related to S?", ["Sister-in-law", "Sister", "Cousin", "Mother"], 0, "P's children are Q and U. Q's wife is S, so U's wife R is S's sister-in-law (wives of two brothers)."),
+]
+
 SEATING: Bank = {
     "beginner": [
         ("Five friends sit in a row facing north. Rohit is at the extreme left and Priya is at the extreme right. Kunal is exactly in the middle. Who sits between Rohit and Kunal?", ["Sneha", "Amit", "Priya", "No one"], 1, "Order: Rohit, Amit, Kunal, Sneha, Priya — Amit sits between Rohit and Kunal."),
@@ -97,6 +117,32 @@ SEATING: Bank = {
         ("Ten people sit in a circle facing the centre, numbered 1 to 10 clockwise, so that person 1 is opposite person 6. If person 3 moves three seats clockwise, how many seats away is she then from person 7 (measured clockwise)?", ["1", "2", "3", "4"], 0, "Person 3 moving three seats clockwise lands on seat 6; from seat 6 to person 7 clockwise is 1 seat."),
     ],
 }
+
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+SEATING["beginner"] += [
+    ("Seven people sit in a row facing north. C sits at the extreme left. B sits immediately left of A, who sits immediately left of D. Who sits between C and A?", ["B", "D", "Nobody", "Cannot say"], 0, "The order starts C, B, A, D - so B sits between C and A."),
+    ("Four people P, Q, R, S sit around a circular table facing the centre. P sits opposite R. Who sits opposite Q?", ["S", "P", "R", "Cannot say"], 0, "With P opposite R, the remaining pair Q-S must sit opposite each other."),
+    ("In a row of 9 facing north, K is 5th from the left. How many people sit to the right of K?", ["3", "4", "5", "6"], 1, "9 - 5 = 4 people sit to the right of K."),
+    ("A, B, C, D, E sit in a row facing north in that order. Who sits in the middle?", ["A", "B", "C", "D"], 2, "Five seats in order A, B, C, D, E - the middle (3rd) seat is C."),
+    ("Six chairs face north in a row. Ravi takes the extreme right chair and Suman the extreme left chair. How many empty chairs lie between them?", ["2", "3", "4", "5"], 2, "Six chairs with both ends taken leaves 4 empty chairs between them."),
+    ("Eight people sit in a circle facing the centre. How many people sit between any two adjacent people?", ["0", "1", "2", "3"], 0, "Adjacent people sit next to each other with nobody between them."),
+]
+SEATING["intermediate"] += [
+    ("Seven people A to G sit in a row facing north. B sits third from the left. D sits immediately right of B. F sits at the extreme right. A sits between D and F. Who sits fourth from the left?", ["D", "A", "F", "B"], 0, "Positions are 1:?, 2:?, 3:B, 4:D, 5:A, 6:?, 7:F - fourth from the left is D."),
+    ("In a row of 50 students facing north, Ramesh is 20th from the left. After 5 students from his right leave, what is his position from the right?", ["25th", "26th", "30th", "31st"], 1, "Originally 50 - 20 + 1 = 31st from the right; 5 students to his right leave, so 31 - 5 = 26th from the right."),
+    ("Five people sit in positions 1 to 5 in a row. A is at position 2. B is immediately right of A. C is at an extreme end but not position 1. D sits between B and E. Who sits at position 5?", ["E", "C", "D", "A"], 0, "A=2, B=3; D between B and E gives B=3, D=4, E=5; C takes the remaining extreme end (position 1). So position 5 is E."),
+    ("In a row facing north, X is 7th from the left and 9th from the right. Y sits exactly in the middle of the row. What is Y's position from the left?", ["8th", "7th", "9th", "10th"], 0, "Total = 7 + 9 - 1 = 15; the middle (8th) seat is Y's, so Y is 8th from the left."),
+    ("Five people A-E sit in a row facing north. B is in the middle. A and E sit at the two ends. C sits immediately left of B. Where does D sit?", ["Immediately right of B", "At an end", "Next to A", "Next to E"], 0, "Ends are A and E; middle is B with C immediately left (position 2); D takes the only free seat - position 4, immediately right of B."),
+    ("A row has 12 seats facing north. A sits on seat 3 and B sits on seat 9. How many seats lie strictly between them?", ["5", "6", "7", "4"], 0, "Seats 4, 5, 6, 7, 8 lie between seats 3 and 9 - five seats."),
+]
+SEATING["advanced"] += [
+    ("Eight people sit around a circle facing the centre. A sits opposite E. B sits immediately to the right of A. Who sits immediately to the left of E?", ["B", "A", "F", "Cannot be determined"], 3, "Only A-E opposite and B right of A are fixed; which named person sits left of E is undetermined by the clues."),
+    ("Twelve people sit around a circular table facing the centre. Each opposite pair is counted once. How many opposite pairs are there?", ["12", "6", "5", "24"], 1, "Twelve seats form 12/2 = 6 opposite pairs."),
+    ("In a row of 20 people, P is 5th from the left. After 4 people join to the left of P, what was P's ORIGINAL position from the right?", ["16th", "15th", "12th", "11th"], 0, "The joining info is a distractor: originally P is 5th from the left of 20, so 20 - 5 + 1 = 16th from the right."),
+    ("A, B, C, D, E, F, G sit in a row facing north. B is 4th. A and G are at the ends. C sits immediately right of B. D sits immediately left of B. E sits at position 2. Who sits at position 6?", ["F", "E", "G", "A"], 0, "B=4, C=5, D=3; E=2 forces A=1 (E sits next to A); then G=7 with F next to G, so F=6."),
+    ("Nine chairs in a row face north. Three friends occupy chairs 2, 5 and 8. How many pairs of friends have exactly two empty chairs between them?", ["1", "2", "3", "0"], 1, "Chairs (2,5) have 3,4 empty and (5,8) have 6,7 empty - two such pairs."),
+    ("People sit in two rows of 4 facing each other, mirrored: A2 faces B3. If X sits at A2, who faces X?", ["Whoever sits at B3", "Whoever sits at B2", "Whoever sits at B4", "Nobody"], 0, "A2 faces B3 by the given mirror mapping."),
+]
 
 PUZZLES: Bank = {
     "beginner": [
@@ -125,6 +171,32 @@ PUZZLES: Bank = {
     ],
 }
 
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+PUZZLES["beginner"] += [
+    ("What comes next: 2, 4, 8, 16, ...?", ["20", "24", "32", "18"], 2, "Each term doubles the previous one: 16 x 2 = 32."),
+    ("A basket has 5 apples. Five children take one apple each, yet one apple remains in the basket. How?", ["One child took the basket with the apple", "There were six apples", "One child returned it", "Impossible"], 0, "The fifth child took the basket itself along with the last apple."),
+    ("How many months have 28 days?", ["1", "2", "12", "0"], 2, "Every month has at least 28 days, so all 12 qualify."),
+    ("A man builds a house with all four walls facing south. A bear walks by. What colour is the bear?", ["Brown", "White", "Black", "Grey"], 1, "A house with all walls facing south must stand at the North Pole, where bears are white (polar bears)."),
+    ("If you rearrange 'CIFAIPC' you get the name of a:", ["City", "Ocean", "Country", "Animal"], 1, "CIFAIPC rearranges to PACIFIC - an ocean."),
+    ("Which number comes next: 1, 1, 2, 3, 5, 8, ...?", ["11", "12", "13", "10"], 2, "Fibonacci: each term is the sum of the previous two, 5 + 8 = 13."),
+]
+PUZZLES["intermediate"] += [
+    ("What comes next: 3, 6, 11, 18, ...?", ["27", "26", "29", "24"], 0, "Differences grow by 2 each time: +3, +5, +7, so next is 18 + 9 = 27."),
+    ("A snail climbs a 10-metre pole, rising 3 m each day and slipping 2 m each night. On which day does it reach the top?", ["10th", "8th", "7th", "5th"], 1, "Net gain is 1 m per day; after 7 days it is at 7 m, and on day 8 it climbs 3 m to reach 10 m without slipping."),
+    ("How many times do the hands of a clock overlap in 24 hours?", ["24", "22", "20", "12"], 1, "The hands overlap 11 times every 12 hours, so 22 times in 24 hours."),
+    ("In a code, SKY is written as 19-11-25 (letter positions). How is CUP written?", ["3-21-16", "3-20-16", "4-21-15", "3-21-15"], 0, "C=3, U=21, P=16, so CUP is 3-21-16."),
+    ("A trader marks goods 40% above cost and offers a 10% discount. What is the overall profit?", ["30%", "26%", "28%", "24%"], 1, "Marked price = 1.4 x cost; selling price = 1.4 x 0.9 = 1.26 x cost - a 26% profit."),
+    ("Find the odd one out: Square, Circle, Triangle, Cube.", ["Square", "Circle", "Triangle", "Cube"], 3, "Square, circle and triangle are 2D shapes; a cube is 3D."),
+]
+PUZZLES["advanced"] += [
+    ("What comes next: 2, 3, 5, 7, 11, 13, ...?", ["15", "17", "19", "14"], 1, "These are consecutive prime numbers; the next prime after 13 is 17."),
+    ("A 3x3x3 cube is painted red on all faces and cut into 27 unit cubes. How many small cubes have exactly two painted faces?", ["12", "8", "6", "4"], 0, "Cubes with two painted faces sit on the 12 edges (one per edge)."),
+    ("In a race of 100 m, A beats B by 10 m and B beats C by 10 m. By how much does A beat C?", ["20 m", "19 m", "21 m", "18 m"], 1, "When A runs 100 m, B runs 90 m; when B runs 100 m, C runs 90 m - so when A runs 100 m, C runs 81 m. A beats C by 19 m."),
+    ("What is the next number: 1, 2, 6, 24, 120, ...?", ["600", "720", "840", "480"], 1, "Factorials: 1!, 2!, 3!, 4!, 5!, so next is 6! = 720."),
+    ("Two trains 120 m and 80 m long run towards each other at 60 km/h and 40 km/h. In how many seconds do they cross?", ["7.2", "8", "6", "10"], 0, "Relative speed = 100 km/h = 250/9 m/s; distance = 200 m; time = 200 / (250/9) = 7.2 s."),
+    ("How many squares are there on a standard 8x8 chessboard?", ["64", "204", "128", "256"], 1, "Sum of k^2 for k = 1..8 = 64+49+36+25+16+9+4+1 = 204."),
+]
+
 ANALOGY: Bank = {
     "beginner": [
         ("Doctor : Hospital :: Teacher : ?", ["School", "Office", "Court", "Factory"], 0, "A doctor works in a hospital; a teacher works in a school."),
@@ -152,6 +224,32 @@ ANALOGY: Bank = {
     ],
 }
 
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+ANALOGY["beginner"] += [
+    ("Pen : Write :: Knife : ?", ["Cut", "Eat", "Draw", "Break"], 0, "A pen is used to write; a knife is used to cut."),
+    ("Dog : Bark :: Cow : ?", ["Moo", "Neigh", "Trumpet", "Bleat"], 0, "Dogs bark; cows moo."),
+    ("Sun : Day :: Moon : ?", ["Night", "Stars", "Sky", "Light"], 0, "The sun rules the day; the moon rules the night."),
+    ("Wheel : Car :: Wing : ?", ["Bird", "Aeroplane", "Pilot", "Runway"], 1, "Wheels move a car; wings lift an aeroplane."),
+    ("Ice : Cold :: Fire : ?", ["Hot", "Burn", "Smoke", "Light"], 0, "Ice is cold; fire is hot."),
+    ("Book : Pages :: Wall : ?", ["Bricks", "Cement", "Paint", "Door"], 0, "A book is made of pages; a wall is made of bricks."),
+]
+ANALOGY["intermediate"] += [
+    ("Chef : Kitchen :: Surgeon : ?", ["Hospital", "Operation Theatre", "Clinic", "Ward"], 1, "A chef works in a kitchen; a surgeon operates in an operation theatre."),
+    ("Honey : Bee :: Silk : ?", ["Spider", "Silkworm", "Moth", "Caterpillar"], 1, "Bees produce honey; silkworms produce silk."),
+    ("Cricket : Bat :: Hockey : ?", ["Stick", "Ball", "Goal", "Field"], 0, "Cricket is played with a bat; hockey with a stick."),
+    ("Smoke : Fire :: Flood : ?", ["Rain", "River", "Dam", "Storm"], 0, "Smoke signals fire; a flood follows heavy rain."),
+    ("Lawyer : Court :: Teacher : ?", ["School", "Student", "Book", "Class"], 0, "A lawyer practises in court; a teacher teaches in school."),
+    ("Month : Year :: Hour : ?", ["Day", "Minute", "Week", "Second"], 0, "Twelve months make a year; 24 hours make a day."),
+]
+ANALOGY["advanced"] += [
+    ("Altruist : Selflessness :: Hedonist : ?", ["Pleasure", "Pain", "Wealth", "Knowledge"], 0, "An altruist pursues selflessness; a hedonist pursues pleasure."),
+    ("Stoic : Emotion :: Ascetic : ?", ["Comfort", "Food", "Pain", "Wealth"], 0, "A stoic renounces emotion; an ascetic renounces comfort."),
+    ("Bibliography : Books :: Catalogue : ?", ["Items", "Library", "Author", "Prices"], 0, "A bibliography lists books; a catalogue lists items."),
+    ("Ornithologist : Birds :: Entomologist : ?", ["Insects", "Fish", "Plants", "Animals"], 0, "Ornithology studies birds; entomology studies insects."),
+    ("Prologue : Play :: Preamble : ?", ["Constitution", "Poem", "Speech", "Law"], 0, "A prologue introduces a play; a preamble introduces a constitution."),
+    ("Meteorology : Weather :: Seismology : ?", ["Earthquakes", "Stars", "Oceans", "Volcanoes"], 0, "Meteorology studies weather; seismology studies earthquakes."),
+]
+
 SYLLOGISM: Bank = {
     "beginner": [
         ("Statements: All pens are books. All books are chairs. Conclusion: All pens are chairs.", ["Follows", "Does not follow", "Either follows", "Cannot say"], 0, "All pens are books and all books are chairs, so all pens are chairs — it follows."),
@@ -178,6 +276,32 @@ SYLLOGISM: Bank = {
         ("Statements: All sons are fathers. Some fathers are teachers. Conclusions: I. Some sons are teachers. II. Some fathers are sons.", ["Only II follows", "Only I follows", "Both follow", "Neither follows"], 0, "I does not follow (fathers who teach need not be sons); II follows because all sons are fathers, so some fathers are sons."),
     ],
 }
+
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+SYLLOGISM["beginner"] += [
+    ("Statements: All birds can fly. Sparrows are birds. Conclusion: Sparrows can fly.", ["Follows", "Does not follow", "Either follows", "Cannot say"], 0, "Treating the statements as true, sparrows (birds) can fly - it follows."),
+    ("Statements: Some cats are black. Tom is a cat. Conclusion: Tom is black.", ["Does not follow", "Follows", "Either follows", "Cannot say"], 0, "Tom may or may not be among the black cats - it does not follow."),
+    ("Statements: All Indians are Asians. Ravi is an Indian. Conclusion: Ravi is Asian.", ["Follows", "Does not follow", "Either follows", "Cannot say"], 0, "Ravi belongs to Indians, who are all Asians - it follows."),
+    ("Statements: No fish can walk. A shark is a fish. Conclusion: A shark cannot walk.", ["Follows", "Does not follow", "Either follows", "Cannot say"], 0, "Sharks are fish and no fish can walk - it follows."),
+    ("Statements: All roses are red. This flower is red. Conclusion: This flower is a rose.", ["Does not follow", "Follows", "Either follows", "Cannot say"], 0, "Other flowers can also be red - it does not follow."),
+    ("Statements: Some doctors are surgeons. All surgeons wear masks. Conclusion: Some doctors wear masks.", ["Follows", "Does not follow", "Either follows", "Cannot say"], 0, "The doctors who are surgeons wear masks - it follows."),
+]
+SYLLOGISM["intermediate"] += [
+    ("Statements: All laptops are computers. Some computers are portable. Conclusion: Some laptops are portable.", ["Does not follow", "Follows", "Either follows", "Cannot say"], 0, "The portable computers need not be laptops - it does not follow."),
+    ("Statements: Some metals are liquids. Mercury is a metal. Conclusion: Mercury is a liquid.", ["Does not follow", "Follows", "Either follows", "Cannot say"], 0, "Mercury may not be among the liquid metals - logically it does not follow."),
+    ("Statements: No teacher is lazy. Some lazy people are students. Conclusion: Some students are not teachers.", ["Follows", "Does not follow", "Either follows", "Cannot say"], 0, "Lazy students cannot be teachers (no teacher is lazy), so some students are not teachers - it follows."),
+    ("Statements: All poets are dreamers. Some dreamers are night owls. Conclusion: Some poets are night owls.", ["Does not follow", "Follows", "Either follows", "Cannot say"], 0, "The night-owl dreamers need not be poets - it does not follow."),
+    ("Statements: Some books are novels. No novel is boring. Conclusion: Some books are not boring.", ["Follows", "Does not follow", "Either follows", "Cannot say"], 0, "The books that are novels are not boring, so some books are not boring - it follows."),
+    ("Statements: All cars need fuel. My vehicle needs fuel. Conclusion: My vehicle is a car.", ["Does not follow", "Follows", "Either follows", "Cannot say"], 0, "Bikes and buses also need fuel - it does not follow."),
+]
+SYLLOGISM["advanced"] += [
+    ("Statements: All A are B. No B is C. Conclusions: I. No A is C. II. Some C are not A.", ["Both follow", "Only I follows", "Only II follows", "Neither follows"], 0, "I follows (A's are B's, and no B is C); II follows too (no C can be an A at all, so certainly some C are not A)."),
+    ("Statements: Some P are Q. All Q are R. Conclusions: I. Some P are R. II. Some R are P.", ["Both follow", "Only I follows", "Only II follows", "Neither follows"], 0, "I follows (P's that are Q are R); II follows by conversion of I (some R are P)."),
+    ("Statements: No X is Y. Some Y are Z. Conclusions: I. Some Z are not X. II. No Z is X.", ["Only I follows", "Only II follows", "Both follow", "Neither follows"], 0, "I follows (the Z's that are Y exclude X); II is too strong (other Z's might be X) - only I follows."),
+    ("Statements: All doctors wear coats. Some coat-wearers carry stethoscopes. Conclusions: I. Some doctors carry stethoscopes. II. Some stethoscope-carriers are doctors.", ["Neither follows", "Only I follows", "Only II follows", "Both follow"], 0, "The coat-wearers with stethoscopes need not include any doctor - neither follows."),
+    ("Statements: All gardens have flowers. Some flowers are roses. Conclusions: I. Some gardens have roses. II. All roses are in gardens.", ["Neither follows", "Only I follows", "Only II follows", "Both follow"], 0, "The roses need not grow in gardens, and gardens need not grow roses - neither follows."),
+    ("Statements: Some actors are singers. All singers are performers. Conclusions: I. Some actors are performers. II. All performers are actors.", ["Only I follows", "Only II follows", "Both follow", "Neither follows"], 0, "I follows (actors who sing perform); II reverses the chain wrongly - only I follows."),
+]
 
 
 def get_reasoning(topic_slug: str, difficulty: str) -> list[QuestionDict]:

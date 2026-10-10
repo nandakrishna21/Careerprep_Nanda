@@ -13,6 +13,7 @@ export default function Pyqs() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [exam, setExam] = useState('');
   const [difficulty, setDifficulty] = useState('');
+  const [year, setYear] = useState('');
   const [items, setItems] = useState<QuizMeta[] | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,6 +40,7 @@ export default function Pyqs() {
         const params: Record<string, unknown> = {};
         if (exam) params.exam = exam;
         if (difficulty) params.difficulty = difficulty;
+        if (year) params.year = Number(year);
         const data = await get<unknown>('/pyqs', params);
         if (alive) setItems(toItems<QuizMeta>(data));
       } catch (err) {
@@ -53,18 +55,19 @@ export default function Pyqs() {
     return () => {
       alive = false;
     };
-  }, [exam, difficulty]);
+  }, [exam, difficulty, year]);
 
   const reset = () => {
     setExam('');
     setDifficulty('');
+    setYear('');
   };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <PageHeader
         title="Previous Year Questions"
-        subtitle="Real PYQs organised by exam and difficulty â€” practise in relaxed mode or under exam conditions."
+        subtitle="Real PYQs organised by exam and difficulty — practise in relaxed mode or under exam conditions."
         actions={
           <LinkButton to="/gov/mock" variant="outline">
             Full mock tests
@@ -95,6 +98,19 @@ export default function Pyqs() {
             <option value="beginner">Beginner</option>
             <option value="intermediate">Intermediate</option>
             <option value="advanced">Advanced</option>
+          </Select>
+        </div>
+        <div className="flex-1">
+          <label className="label" htmlFor="pyq-year">
+            Year
+          </label>
+          <Select id="pyq-year" value={year} onChange={(e) => setYear(e.target.value)}>
+            <option value="">All years</option>
+            {[2026, 2025, 2024, 2023, 2022, 2021, 2020].map((y) => (
+              <option key={y} value={String(y)}>
+                {y}
+              </option>
+            ))}
           </Select>
         </div>
         <button
@@ -146,7 +162,7 @@ export default function Pyqs() {
       ) : (
         <EmptyState
           title="No previous year questions found"
-          description="Try changing the filters â€” new PYQ sets are added regularly."
+          description="Try changing the filters — new PYQ sets are added regularly."
           action={
             <button
               type="button"

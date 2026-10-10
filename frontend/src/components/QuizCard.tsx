@@ -59,14 +59,14 @@ export function QuizCard({
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
         <span className="inline-flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5" /> {quiz.duration_minutes ?? 'â€”'} min
+          <Clock className="h-3.5 w-3.5" /> {quiz.duration_minutes ?? '—'} min
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <HelpCircle className="h-3.5 w-3.5" /> {quiz.total_questions ?? 'â€”'} questions
+          <HelpCircle className="h-3.5 w-3.5" /> {quiz.total_questions ?? '—'} questions
         </span>
         {typeof quiz.negative_marks === 'number' && quiz.negative_marks > 0 && (
           <span className="inline-flex items-center gap-1.5">
-            <MinusCircle className="h-3.5 w-3.5" /> âˆ’{quiz.negative_marks} negative
+            <MinusCircle className="h-3.5 w-3.5" /> −{quiz.negative_marks} negative
           </span>
         )}
         {year && <Badge color="violet">{year}</Badge>}

@@ -31,6 +31,32 @@ HISTORY: Bank = {
     ],
 }
 
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+HISTORY["beginner"] += [
+    ("The Battle of Buxar was fought in which year?", ["1764", "1757", "1772", "1782"], 0, "The Battle of Buxar (1764) gave the British the Diwani of Bengal."),
+    ("Who was the founder of the Maurya Empire?", ["Ashoka", "Chandragupta Maurya", "Bindusara", "Kanishka"], 1, "Chandragupta Maurya founded the Maurya Empire around 321 BCE."),
+    ("The First War of Independence (1857) started from which city?", ["Delhi", "Kanpur", "Meerut", "Lucknow"], 2, "The 1857 revolt began at Meerut on 10 May 1857."),
+    ("Who gave the slogan 'Inquilab Zindabad'?", ["Bhagat Singh", "Hasrat Mohani", "Subhas Bose", "Lala Lajpat Rai"], 1, "Hasrat Mohani coined it; Bhagat Singh popularised it."),
+    ("The Indus Valley site of Lothal is located in which present-day state?", ["Rajasthan", "Gujarat", "Punjab", "Haryana"], 1, "Lothal, the famous dockyard site, is in Gujarat."),
+    ("Who was the last Mughal emperor?", ["Aurangzeb", "Shah Alam II", "Bahadur Shah Zafar", "Akbar II"], 2, "Bahadur Shah Zafar was exiled to Rangoon after 1857."),
+]
+HISTORY["intermediate"] += [
+    ("The Treaty of Allahabad (1765) was signed after which battle?", ["Plassey", "Buxar", "Wandiwash", "Panipat"], 1, "Clive secured the Diwani through the Treaty of Allahabad after Buxar."),
+    ("Who presided over the first session of the Indian National Congress (1885)?", ["A. O. Hume", "W. C. Bonnerjee", "Dadabhai Naoroji", "Surendranath Banerjee"], 1, "W. C. Bonnerjee presided at Bombay in December 1885."),
+    ("The Chauri Chaura incident (1922) led Gandhi to:", ["Launch Quit India", "Suspend Non-Cooperation", "Start Dandi March", "Fast unto death"], 1, "Gandhi suspended the Non-Cooperation Movement after Chauri Chaura."),
+    ("Ashoka's Dhamma policy is best described as:", ["Forced Buddhism", "Moral and ethical code for all", "Ban on rituals", "Tax reform"], 1, "Dhamma was a moral code of tolerance and non-violence for everyone."),
+    ("The Cabinet Mission arrived in India in which year?", ["1942", "1945", "1946", "1947"], 2, "The Cabinet Mission came in March 1946 to discuss transfer of power."),
+    ("Who was known as the 'Grand Old Man of India'?", ["Gopal Krishna Gokhale", "Dadabhai Naoroji", "Bal Gangadhar Tilak", "Ferozeshah Mehta"], 1, "Dadabhai Naoroji earned that title for his decades of service."),
+]
+HISTORY["advanced"] += [
+    ("The Battle of Talikota (1565), which broke Vijayanagara power, was fought between:", ["Rama Raya and the Deccan Sultanates", "Krishnadevaraya and Babur", "Harihara and Alauddin Khalji", "Bukka and Muhammad Tughlaq"], 0, "An alliance of Deccan Sultanates defeated Rama Raya at Talikota in 1565."),
+    ("The Ilbert Bill controversy (1883-84) concerned:", ["Arms licences", "Indian judges trying Europeans", "Salt tax", "Forest rights"], 1, "The Bill let Indian judges try European offenders, sparking white opposition."),
+    ("The 'Drain of Wealth' theory was first systematically presented by:", ["R. C. Dutt in 1901", "Dadabhai Naoroji in 1867", "M. G. Ranade in 1872", "G. V. Joshi in 1888"], 1, "Naoroji presented the drain theory in 1867."),
+    ("The Theosophical Society's headquarters in India was established at:", ["Adyar, Madras", "Varanasi", "Pune", "Calcutta"], 0, "Blavatsky and Olcott set up the Adyar headquarters in 1882."),
+    ("The Pitt's India Act (1784) set up which body to control the Company?", ["Board of Control", "Court of Directors", "Council of India", "Imperial Council"], 0, "Pitt's Act created a six-member Board of Control in London."),
+    ("The Simon Commission arrived in India in 1928. How many Indian members did it have?", ["Two", "One", "Zero", "Seven"], 2, "The all-white Simon Commission had zero Indian members, sparking boycotts."),
+]
+
 GEOGRAPHY: Bank = {
     "beginner": [
         ("The Tropic of Cancer passes through how many Indian states?", ["6", "7", "8", "9"], 2, "It passes through 8 states: Gujarat, Rajasthan, MP, Chhattisgarh, Jharkhand, WB, Tripura, Mizoram."),
@@ -57,6 +83,32 @@ GEOGRAPHY: Bank = {
         ("Which Indian river forms the Dhuandhar Falls at Jabalpur?", ["Narmada", "Tapti", "Chambal", "Son"], 0, "The Narmada forms Dhuandhar Falls near the Marble Rocks at Bhedaghat."),
     ],
 }
+
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+GEOGRAPHY["beginner"] += [
+    ("Which is the smallest state of India by area?", ["Sikkim", "Goa", "Tripura", "Manipur"], 1, "Goa is the smallest state by area."),
+    ("The Deccan Plateau is primarily made of which rock?", ["Granite", "Basalt", "Sandstone", "Marble"], 1, "The Deccan Traps are vast basalt lava flows."),
+    ("Which river is called the 'Sorrow of Bengal'?", ["Hooghly", "Damodar", "Mahanadi", "Subarnarekha"], 1, "The Damodar's floods earned it that name before the DVC dams."),
+    ("The Konkan coast lies between:", ["The Western Ghats and the Arabian Sea", "The Eastern Ghats and the Bay of Bengal", "The Aravallis and the Thar", "The Shivaliks and the plains"], 0, "Konkan is the coastal strip of Maharashtra between the Western Ghats and the Arabian Sea."),
+    ("Which country is called the 'Land of the Rising Sun'?", ["China", "Japan", "Thailand", "Korea"], 1, "Japan lies east of Asia, where the sun rises first."),
+    ("The Prime Meridian passes through which city?", ["Paris", "Greenwich", "Rome", "Madrid"], 1, "Zero longitude runs through Greenwich, London."),
+]
+GEOGRAPHY["intermediate"] += [
+    ("Which of these rivers flows westwards into the Arabian Sea?", ["Mahanadi", "Godavari", "Narmada", "Krishna"], 2, "The Narmada flows west through a rift valley into the Arabian Sea."),
+    ("The 'karewas' of Kashmir are best described as:", ["Glacial lakes", "Oxbow lakes", "Ancient lake deposits", "Crater lakes"], 2, "Karewas are ancient lacustrine deposits, ideal for saffron and horticulture."),
+    ("Which pass connects Srinagar to Leh?", ["Rohtang", "Zoji La", "Banihal", "Shipki La"], 1, "Zoji La on the Great Himalayan Range links Srinagar and Leh."),
+    ("The Chota Nagpur Plateau is rich in which resource?", ["Petroleum", "Minerals and coal", "Tea", "Cotton"], 1, "Chota Nagpur holds India's major coal and mineral belts."),
+    ("Which current flows along the west coast of South America?", ["Gulf Stream", "Humboldt (Peru) Current", "Agulhas Current", "Kuroshio Current"], 1, "The cold Humboldt Current flows north along Peru and Chile."),
+    ("The 82.5 degrees East longitude is significant for India because:", ["It marks the Tropic of Cancer", "Indian Standard Time is based on it", "It is the easternmost point", "It divides two zones"], 1, "IST (GMT + 5:30) is based on 82.5E passing near Mirzapur."),
+]
+GEOGRAPHY["advanced"] += [
+    ("The Grand Canyon has been carved by which river?", ["Missouri", "Colorado", "Columbia", "Rio Grande"], 1, "The Colorado River carved the Grand Canyon over millions of years."),
+    ("Which of these is a cold desert in India?", ["Thar", "Ladakh", "Rann of Kutch", "Deccan"], 1, "Ladakh's high altitude makes it a cold desert."),
+    ("The doldrums refer to:", ["Horse latitudes", "Equatorial low-pressure calm belt", "Polar highs", "Trade wind deserts"], 1, "The doldrums are the calm equatorial belt where trade winds converge."),
+    ("Which strait separates Sri Lanka from India?", ["Malacca Strait", "Palk Strait", "Sunda Strait", "Bering Strait"], 1, "The Palk Strait (with Adam's Bridge) separates Tamil Nadu and Sri Lanka."),
+    ("Laterite soils develop mainly under conditions of:", ["Low rainfall", "High temperature and heavy rainfall with leaching", "Permafrost", "Volcanic ash"], 1, "Intense leaching in hot, wet climates produces laterite."),
+    ("The Rhine river empties into which sea?", ["Mediterranean Sea", "North Sea", "Baltic Sea", "Black Sea"], 1, "The Rhine flows through Rotterdam into the North Sea."),
+]
 
 POLITY: Bank = {
     "beginner": [
@@ -85,6 +137,32 @@ POLITY: Bank = {
     ],
 }
 
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+POLITY["beginner"] += [
+    ("The Preamble declares India to be which kind of republic?", ["Democratic", "Sovereign Socialist Secular Democratic", "Federal", "Presidential"], 1, "The Preamble (after the 42nd Amendment) reads Sovereign Socialist Secular Democratic Republic."),
+    ("Who appoints the Chief Minister of a state?", ["President", "Governor", "Chief Justice", "Prime Minister"], 1, "The Governor appoints the Chief Minister (Article 164)."),
+    ("The minimum age to become President of India is:", ["25 years", "30 years", "35 years", "21 years"], 2, "Article 58 requires 35 years for the presidency."),
+    ("Which house of Parliament is permanent and never dissolved?", ["Lok Sabha", "Rajya Sabha", "Both", "Neither"], 1, "Rajya Sabha is a continuing body; one-third retires every two years."),
+    ("Fundamental Duties were added by which amendment?", ["42nd Amendment", "44th Amendment", "52nd Amendment", "61st Amendment"], 0, "The 42nd Amendment (1976) added Part IVA with 10 duties."),
+    ("The Election Commission is mentioned in which article?", ["Article 320", "Article 324", "Article 326", "Article 330"], 1, "Article 324 vests superintendence of elections in the Election Commission."),
+]
+POLITY["intermediate"] += [
+    ("Which writ is issued to produce a detained person before the court?", ["Mandamus", "Habeas Corpus", "Certiorari", "Quo Warranto"], 1, "Habeas Corpus ('to have the body') tests the legality of detention."),
+    ("The Sarkaria Commission (1983) dealt with:", ["Centre-State relations", "Electoral reforms", "Police reforms", "Banking supervision"], 0, "Sarkaria reviewed Centre-State relations and Article 356 misuse."),
+    ("A money bill can be introduced only in:", ["Rajya Sabha", "Lok Sabha", "Either house", "Joint sitting"], 1, "Article 109: money bills originate only in the Lok Sabha."),
+    ("The 73rd Amendment is associated with:", ["Municipalities", "Panchayati Raj", "Cooperatives", "Tribunals"], 1, "The 73rd Amendment (1992) gave constitutional status to panchayats."),
+    ("Who administers the oath of office to the President?", ["Prime Minister", "Chief Justice of India", "Vice President", "Speaker"], 1, "The CJI administers the presidential oath (Article 60)."),
+    ("The 'doctrine of basic structure' was laid down in which case?", ["Golaknath case", "Kesavananda Bharati case", "Minerva Mills case", "Maneka Gandhi case"], 1, "Kesavananda Bharati (1973) held Parliament cannot alter the basic structure."),
+]
+POLITY["advanced"] += [
+    ("The Ninth Schedule was added by which amendment, and why is it famous?", ["1st Amendment; it shields land-reform laws from judicial review", "24th Amendment; it curtails property rights", "42nd Amendment; it adds duties", "44th Amendment; it restores rights"], 0, "The 1st Amendment (1951) created the Ninth Schedule to protect agrarian reform laws."),
+    ("Under Article 360, a Financial Emergency has been proclaimed in India:", ["Once, in 1991", "Twice, in 1975 and 1991", "Never", "Thrice"], 2, "Article 360 has never been invoked."),
+    ("The Punchhi Commission submitted its report in which year?", ["2005", "2010", "2015", "2020"], 1, "The Punchhi Commission on Centre-State relations reported in 2010."),
+    ("Which amendment lowered the voting age from 21 to 18?", ["42nd", "44th", "61st", "73rd"], 2, "The 61st Amendment (1988) lowered the voting age to 18."),
+    ("The office of the Leader of the Opposition was given statutory recognition in:", ["1977", "1985", "1993", "2004"], 0, "The Salary and Allowances of Leaders of Opposition Act, 1977 recognised the post."),
+    ("A proclamation of National Emergency under Article 352 requires approval within:", ["14 days", "One month", "Two months", "Six months"], 1, "After the 44th Amendment, Parliament must approve it within one month."),
+]
+
 ECONOMY: Bank = {
     "beginner": [
         ("Which institution regulates monetary policy in India?", ["SEBI", "RBI", "NITI Aayog", "Ministry of Finance"], 1, "The Reserve Bank of India formulates monetary policy."),
@@ -111,6 +189,32 @@ ECONOMY: Bank = {
         ("Stagflation refers to a situation of:", ["High growth with low inflation", "High inflation with stagnant output and high unemployment", "Low inflation with high growth", "Falling prices with rising output"], 1, "Stagflation = the rare combination of economic stagnation, high unemployment and high inflation."),
     ],
 }
+
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+ECONOMY["beginner"] += [
+    ("The financial year in India runs from:", ["January to December", "April to March", "July to June", "October to September"], 1, "India's financial year runs 1 April to 31 March."),
+    ("Which tax replaced most indirect taxes in 2017?", ["VAT", "GST", "Service tax", "Octroi"], 1, "GST subsumed excise, VAT, service tax and octroi from 1 July 2017."),
+    ("Bank rate, CRR and SLR are instruments of:", ["Fiscal policy", "Monetary policy", "Trade policy", "Industrial policy"], 1, "RBI uses them under monetary policy to control liquidity."),
+    ("Disguised unemployment is most visible in which sector?", ["Industry", "Agriculture", "Services", "Construction"], 1, "Extra hands on family farms add nothing to output - classic disguised unemployment."),
+    ("The headquarters of the RBI is located in:", ["New Delhi", "Mumbai", "Kolkata", "Chennai"], 1, "RBI headquarters moved from Kolkata to Mumbai in 1937."),
+    ("A rise in the repo rate generally makes loans:", ["Cheaper", "Costlier", "Free", "Unchanged"], 1, "Higher repo raises banks' borrowing costs, passed on as costlier loans."),
+]
+ECONOMY["intermediate"] += [
+    ("The base year for the current CPI (Combined) series in India is:", ["2004-05", "2011-12", "2012", "2015"], 2, "CPI-Combined uses 2012 as the base year."),
+    ("Fiscal deficit equals:", ["Total expenditure minus total receipts excluding borrowings", "Revenue deficit minus grants", "Primary deficit minus subsidies", "Budget deficit plus disinvestment"], 0, "Fiscal deficit = total expenditure - (revenue receipts + non-debt capital receipts)."),
+    ("NABARD is primarily concerned with:", ["Industrial finance", "Agricultural and rural finance", "Housing finance", "Export finance"], 1, "NABARD (1982) refinances agriculture and rural development."),
+    ("The SDR is the reserve asset of which institution?", ["World Bank", "IMF", "WTO", "ADB"], 1, "Special Drawing Rights are the IMF's supplementary reserve asset."),
+    ("In India, devaluation of the rupee was first carried out in:", ["1947", "1949", "1966", "1991"], 1, "The rupee was devalued in September 1949 after sterling's devaluation."),
+    ("The 'Laffer Curve' shows the relationship between:", ["Inflation and unemployment", "Tax rates and tax revenue", "Money supply and prices", "Wages and productivity"], 1, "The Laffer curve plots tax revenue against tax rates."),
+]
+ECONOMY["advanced"] += [
+    ("The FRBM Act was enacted in which year, and what does it target?", ["2000; zero revenue deficit", "2003; containing fiscal deficit", "2005; bank recapitalisation", "1999; disinvestment"], 1, "FRBM (2003) mandates phased reduction of fiscal and revenue deficits."),
+    ("Core inflation in India excludes which two volatile groups?", ["Food and fuel", "Housing and clothing", "Transport and health", "Education and recreation"], 0, "Core inflation = headline minus food and fuel."),
+    ("The 'impossible trinity' says a country cannot simultaneously have:", ["Growth, equity and stability", "Fixed exchange rate, free capital flow and independent monetary policy", "Low inflation, low unemployment and high growth", "Surplus budget, low debt and high spending"], 1, "Mundell's trilemma: pick any two of the three."),
+    ("Sterilisation by a central bank refers to:", ["Destroying soiled notes", "Offsetting forex intervention with domestic operations", "Closing weak banks", "Banning cash deals"], 1, "Sterilisation neutralises the money-supply impact of forex purchases and sales."),
+    ("The Phillips Curve in its original form relates:", ["Wage growth and unemployment", "Money supply and inflation", "Interest rates and investment", "Deficits and interest rates"], 0, "Phillips (1958) linked wage inflation inversely to unemployment."),
+    ("India's first Economic Survey was presented in which year?", ["1947-48", "1950-51", "1952-53", "1960-61"], 1, "The first Survey covered 1950-51, presented in 1951."),
+]
 
 CURRENT: Bank = {
     "beginner": [
@@ -165,6 +269,32 @@ SCIENCE: Bank = {
         ("Which type of radiation has the highest penetrating power?", ["Alpha rays", "Beta rays", "X-rays", "Gamma rays"], 3, "Gamma rays penetrate the deepest because they have the shortest wavelength and no charge."),
     ],
 }
+
+# PYQ-paper expansion (2020-2026 sets): extra practice depth per level.
+SCIENCE["beginner"] += [
+    ("The chemical symbol for gold is:", ["Go", "Gd", "Au", "Ag"], 2, "Gold's symbol Au comes from Latin 'aurum'."),
+    ("The hardest natural substance on Earth is:", ["Iron", "Quartz", "Diamond", "Granite"], 2, "Diamond tops the Mohs scale at 10."),
+    ("Which gas do plants absorb for photosynthesis?", ["Oxygen", "Nitrogen", "Carbon dioxide", "Hydrogen"], 2, "Plants take in carbon dioxide and release oxygen."),
+    ("The SI unit of electric current is:", ["Volt", "Ampere", "Ohm", "Watt"], 1, "Current is measured in amperes."),
+    ("Which part of the human cell contains genetic material?", ["Ribosome", "Nucleus", "Cytoplasm", "Membrane"], 1, "DNA is stored in the nucleus."),
+    ("Water boils at 100 degrees Celsius at:", ["Sea level", "Mountain tops", "Deep mines", "High pressure chambers"], 0, "At sea-level pressure, water boils at 100 degrees C."),
+]
+SCIENCE["intermediate"] += [
+    ("The pH of human blood is approximately:", ["6.4", "7.4", "8.4", "5.4"], 1, "Blood is slightly alkaline at about 7.4."),
+    ("Which law states that voltage equals current times resistance?", ["Faraday's law", "Ohm's law", "Newton's law", "Boyle's law"], 1, "V = IR is Ohm's law."),
+    ("Photosynthesis releases which gas as a byproduct?", ["Carbon dioxide", "Oxygen", "Nitrogen", "Methane"], 1, "Splitting water releases oxygen."),
+    ("The functional unit of the kidney is:", ["Neuron", "Nephron", "Alveolus", "Glomerulus alone"], 1, "Each kidney has about a million nephrons that filter blood."),
+    ("Which vitamin is synthesised in the skin by sunlight?", ["Vitamin A", "Vitamin C", "Vitamin D", "Vitamin K"], 2, "UV-B converts cholesterol in skin to vitamin D."),
+    ("An object floats when its density is:", ["Greater than the fluid", "Less than the fluid", "Equal to zero", "Infinite"], 1, "Lower density than the fluid lets buoyancy win."),
+]
+SCIENCE["advanced"] += [
+    ("The particles called mesons are made of:", ["Three quarks", "A quark-antiquark pair", "Two protons", "Gluons only"], 1, "Mesons = quark + antiquark; baryons = three quarks."),
+    ("CRISPR-Cas9 is primarily a tool for:", ["Gene editing", "Blood typing", "X-ray imaging", "Vaccine storage"], 0, "CRISPR-Cas9 cuts DNA at targeted spots for editing."),
+    ("The Heisenberg uncertainty principle relates:", ["Energy and time only", "Position and momentum", "Mass and charge", "Speed and distance"], 1, "You cannot know both position and momentum exactly at once."),
+    ("Superconductivity was first observed in which element?", ["Copper", "Mercury", "Lead", "Aluminium"], 1, "Onnes found mercury loses resistance near absolute zero (1911)."),
+    ("The ozone layer absorbs mainly which radiation?", ["Infrared", "Ultraviolet", "X-rays", "Radio waves"], 1, "Ozone absorbs harmful UV-B and UV-C."),
+    ("Mitochondrial DNA in humans is inherited:", ["From the father only", "From the mother only", "Equally from both parents", "From neither parent"], 1, "Mitochondria come almost entirely from the egg - maternal inheritance."),
+]
 
 
 def get_ga(topic_slug: str, difficulty: str) -> list[QuestionDict]:
