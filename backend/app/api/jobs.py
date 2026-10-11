@@ -1,16 +1,27 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+import secrets
+
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import OptionalUser
+from app.core.config import settings
 from app.core.security import CurrentUser, DbSession
 from app.models import Job, SavedJob, User
 from app.schemas.misc import SaveJobRequest
 from app.services.common import job_brief
 from app.services.job_taxonomy import locations_with_counts, roles_with_counts
-from app.services.job_sync import REMOTE_SITES
+from app.services.job_sync import (
+    MANUAL_REMOTE_COOLDOWN_SECONDS,
+    REMOTE_SITES,
+    last_remote_sync_at,
+    remote_cooldown_remaining,
+    run_scheduled_sync,
+    sync_guard,
+    sync_remote_jobs,
+)
 
 router = APIRouter(tags=["jobs"])
 
@@ -190,6 +201,83 @@ def job_facets(db: DbSession) -> dict:
 def remote_job_sites() -> dict:
     """Every remote job website: crawled boards plus directory links."""
     return {"sites": REMOTE_SITES}
+
+
+@router.get("/sync/status")
+def job_sync_status(db: DbSession) -> dict:
+    """Freshness snapshot for the Remote tab (public: no sensitive data)."""
+    last_remote = last_remote_sync_at(db)
+    last_any = db.scalar(select(func.max(Job.synced_at)).where(Job.external_id.is_not(None)))
+    return {
+        "last_remote_synced_at": last_remote.isoformat() if last_remote else None,
+        "last_synced_at": last_any.isoformat() if last_any else None,
+        "manual_cooldown_hours": MANUAL_REMOTE_COOLDOWN_SECONDS // 3600,
+        "auto_sync": {"schedule": "daily", "time": "11:00 AM IST"},
+    }
+
+
+@router.post("/sync/remote")
+def user_sync_remote_jobs(db: DbSession, user: CurrentUser) -> dict:
+    """Let learners refresh remote listings; rate-limited so credits survive."""
+    if not settings.apify_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Live sync is not configured yet."
+        )
+    remaining = remote_cooldown_remaining(db)
+    if remaining > 0:
+        hours = remaining / 3600
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"Remote jobs were synced recently - try again in about {hours:.1f} hours "
+                "(listings auto-sync daily at 11:00 AM IST)."
+            ),
+        )
+    try:
+        with sync_guard():
+            return sync_remote_jobs(db)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+def _run_scheduled_sync() -> None:
+    try:
+        report = run_scheduled_sync()
+    except Exception as exc:  # noqa: BLE001 - background failures belong in logs, not tracebacks
+        print(f"[scheduled-sync] failed: {exc}")
+    else:
+        phases = ", ".join(
+            f"{name}={'ok' if item.get('ok') else 'FAILED'}" for name, item in report.get("reports", {}).items()
+        )
+        print(f"[scheduled-sync] done: ok={report.get('ok')} ({phases})")
+
+
+@router.post("/sync/scheduled")
+def scheduled_job_sync(
+    background_tasks: BackgroundTasks,
+    token: str | None = None,
+    x_cron_token: str | None = Header(default=None),
+) -> dict:
+    """cron-job.org pings this daily at 11 AM IST; the crawl runs in background
+    so the ping returns instantly instead of timing out mid-crawl."""
+    expected = settings.cron_secret
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Scheduled sync is not configured (CRON_SECRET missing).",
+        )
+    provided = x_cron_token or token or ""
+    if not secrets.compare_digest(provided, expected):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid cron token.")
+    try:
+        with sync_guard():
+            pass
+    except RuntimeError:
+        return {"started": False, "reason": "a sync is already running"}
+    background_tasks.add_task(_run_scheduled_sync)
+    return {"started": True}
 
 
 @router.get("/{id}")

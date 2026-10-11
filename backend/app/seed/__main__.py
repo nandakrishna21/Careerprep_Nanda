@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from app.core.database import Base, SessionLocal, engine
 from app.seed import run
+from app.services.email_otp import ensure_user_columns
 from app.services.job_taxonomy import backfill_jobs
 
 
 def main() -> None:
     Base.metadata.create_all(engine)
     backfill_jobs(engine)
+    ensure_user_columns(engine)
     db = SessionLocal()
     try:
         added = run(db)

@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Globe,
   MapPin,
+  RefreshCw,
   Search as SearchIcon,
   Wallet,
 } from 'lucide-react';
@@ -38,6 +39,30 @@ const REMOTE_SOURCE_LABELS: Record<string, string> = {
 
 const STATUS_OPTIONS = ['saved', 'applied', 'interviewing', 'offer', 'rejected'];
 
+interface RemoteSyncStatus {
+  last_remote_synced_at: string | null;
+  last_synced_at: string | null;
+  manual_cooldown_hours: number;
+  auto_sync: { schedule: string; time: string };
+}
+
+interface RemoteSyncResult {
+  ok: boolean;
+  created: number;
+  updated: number;
+  synced_total: number;
+}
+
+function timeAgo(iso: string | null): string | null {
+  if (!iso) return null;
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 function daysLeft(deadline: string | null): { label: string; tone: string } | null {
   if (!deadline) return null;
   const end = new Date(`${deadline.slice(0, 10)}T23:59:59`);
@@ -66,6 +91,9 @@ export default function Jobs() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [facets, setFacets] = useState<JobFacets | null>(null);
   const [remoteSites, setRemoteSites] = useState<RemoteSite[]>([]);
+  const [syncStatus, setSyncStatus] = useState<RemoteSyncStatus | null>(null);
+  const [syncingRemote, setSyncingRemote] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Filter options come from the board itself so the UI never offers a value that
   // returns zero rows (seed values and crawled values differ).
@@ -85,6 +113,38 @@ export default function Jobs() {
       alive = false;
     };
   }, []);
+
+  const loadSyncStatus = async () => {
+    try {
+      setSyncStatus(await get<RemoteSyncStatus>('/jobs/sync/status'));
+    } catch {
+      setSyncStatus(null);
+    }
+  };
+
+  useEffect(() => {
+    void loadSyncStatus();
+  }, []);
+
+  const runRemoteSync = async () => {
+    if (syncingRemote) return;
+    setSyncingRemote(true);
+    toast.loading('Crawling remote boards — about a minute…', { id: 'user-remote-sync' });
+    try {
+      const result = await post<RemoteSyncResult>('/jobs/sync/remote');
+      toast.success(
+        `Fresh remote jobs: ${result.synced_total} listings · ${result.created} new · ${result.updated} updated`,
+        { id: 'user-remote-sync', duration: 6000 }
+      );
+      setPage(1);
+      setRefreshKey((k) => k + 1);
+      await loadSyncStatus();
+    } catch (err) {
+      toast.error(errorMessage(err), { id: 'user-remote-sync', duration: 8000 });
+    } finally {
+      setSyncingRemote(false);
+    }
+  };
 
   const facetKey: 'all' | 'government' | 'it' | 'remote' = tab === 'saved' ? 'all' : tab;
   const group = facets?.[facetKey];
@@ -138,7 +198,7 @@ export default function Jobs() {
     return () => {
       alive = false;
     };
-  }, [tab, category, role, location, q, page]);
+  }, [tab, category, role, location, q, page, refreshKey]);
 
   const switchTab = (next: Tab) => {
     setTab(next);
@@ -238,11 +298,27 @@ export default function Jobs() {
         </form>
       </div>
 
-      {tab === 'remote' && remoteSites.length > 0 && (
+      {tab === 'remote' && (
         <div>
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-            Remote job websites
-          </p>
+          <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Remote job websites
+              </p>
+              {syncStatus && (
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {syncStatus.last_remote_synced_at
+                    ? `Listings updated ${timeAgo(syncStatus.last_remote_synced_at)} · `
+                    : ''}
+                  auto-syncs daily at {syncStatus.auto_sync.time}
+                </p>
+              )}
+            </div>
+            <Button variant="outline" onClick={() => void runRemoteSync()} loading={syncingRemote}>
+              <RefreshCw className="h-4 w-4" /> Sync remote jobs
+            </Button>
+          </div>
+          {remoteSites.length > 0 && (
           <div className="flex gap-3 overflow-x-auto pb-2">
             {remoteSites.map((site) => (
               <a
@@ -268,6 +344,7 @@ export default function Jobs() {
               </a>
             ))}
           </div>
+          )}
         </div>
       )}
 

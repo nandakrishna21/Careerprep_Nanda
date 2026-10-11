@@ -79,6 +79,7 @@ def _ensure_demo_student(db: Session) -> User:
         full_name=spec["full_name"],
         role="student",
         is_active=True,
+        is_verified=True,
     )
     db.add(user)
     db.flush()

@@ -25,6 +25,12 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
+      # Shared secret for the daily 11 AM IST auto-sync. After deploy, copy its
+      # value from the Render dashboard into cron-job.org:
+      #   POST https://careerprep-api.onrender.com/api/jobs/sync/scheduled?token=<value>
+      #   schedule: daily 11:00, timezone Asia/Kolkata.
+      - key: CRON_SECRET
+        generateValue: true
       - key: CORS_ORIGINS
         value: https://careerprep-nanda.vercel.app,http://localhost:5173,http://localhost:3000
       - key: DATABASE_URL
@@ -40,4 +46,17 @@ services:
       - key: ADMIN_EMAIL
         value: admin@careerprep.com
       - key: ADMIN_PASSWORD
+        sync: false
+      # Signup now sends an OTP email: production REQUIRES working SMTP or
+      # registration fails. Free options: Gmail app password
+      # (smtp.gmail.com:587) or Brevo free tier (smtp-relay.brevo.com:587).
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
         sync: false

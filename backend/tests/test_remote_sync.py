@@ -202,3 +202,71 @@ def test_remote_tab_and_facets_and_sites(client, db):
 
     sites = client.get("/api/jobs/remote-sites").json()
     assert len(sites["sites"]) == 11
+
+
+def _remote_row(db, synced_at):
+    from sqlalchemy import select
+
+    from app.models import Job
+
+    row = db.scalar(select(Job).where(Job.external_id == "test-remote-sync-row"))
+    if row is None:
+        row = Job(
+            title="Remote Test Engineer",
+            company="TestCorp",
+            type="it",
+            category="remote",
+            description="test",
+            location="Remote",
+            salary="",
+            apply_link="https://example.com",
+            source="remotive",
+            external_id="test-remote-sync-row",
+        )
+        db.add(row)
+    row.synced_at = synced_at
+    db.commit()
+    return row
+
+
+def test_remote_sync_status_is_public(client, db):
+    from app.services.common import naive_utc_now
+
+    _remote_row(db, naive_utc_now())
+    body = client.get("/api/jobs/sync/status").json()
+    assert body["last_remote_synced_at"] is not None
+    assert body["auto_sync"] == {"schedule": "daily", "time": "11:00 AM IST"}
+
+
+def test_user_remote_sync_requires_login(client):
+    res = client.post("/api/jobs/sync/remote")
+    assert res.status_code == 401
+
+
+def test_user_remote_sync_cooldown(client, db, auth_headers, monkeypatch):
+    from app.core.config import settings
+    from app.services.common import naive_utc_now
+
+    monkeypatch.setattr(settings, "apify_token", "test-token")
+    _remote_row(db, naive_utc_now())
+    res = client.post("/api/jobs/sync/remote", headers=auth_headers)
+    assert res.status_code == 429
+    assert "11:00 AM IST" in res.json()["detail"]
+
+
+def test_scheduled_sync_rejects_bad_token(client, db, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "cron_secret", "s3cr3t")
+    res = client.post("/api/jobs/sync/scheduled", params={"token": "wrong"})
+    assert res.status_code == 403
+    res = client.post("/api/jobs/sync/scheduled")
+    assert res.status_code == 403
+
+
+def test_scheduled_sync_needs_configured_secret(client, db, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "cron_secret", "")
+    res = client.post("/api/jobs/sync/scheduled", params={"token": "anything"})
+    assert res.status_code == 503

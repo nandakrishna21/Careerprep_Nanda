@@ -27,6 +27,27 @@ class TokenResponse(BaseModel):
     user: UserOut
 
 
+class RegisterResponse(BaseModel):
+    user_id: int
+    email: str
+    otp_sent: bool = True
+    dev_otp: str | None = None
+
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=4, max_length=12)
+
+
+class ResendOtpRequest(BaseModel):
+    email: EmailStr
+
+
+class ResendOtpResponse(BaseModel):
+    message: str
+    dev_otp: str | None = None
+
+
 class ProfileOut(BaseModel):
     id: int
     user_id: int

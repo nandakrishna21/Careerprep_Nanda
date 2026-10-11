@@ -28,6 +28,7 @@ from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
 from app.models import Profile, User
 from app.services import achievements
+from app.services.email_otp import ensure_user_columns
 from app.services.job_taxonomy import backfill_jobs
 
 
@@ -37,6 +38,8 @@ async def lifespan(_: FastAPI):
     # The jobs table gained filter columns after the first release; add them to an
     # existing database and derive role/city for anything already in it.
     backfill_jobs(engine)
+    # Email verification arrived later: add the flag and grandfather old accounts.
+    ensure_user_columns(engine)
     db = SessionLocal()
     try:
         admin_email = settings.admin_email.strip().lower()
@@ -48,6 +51,7 @@ async def lifespan(_: FastAPI):
                 full_name="Administrator",
                 role="admin",
                 is_active=True,
+                is_verified=True,
             )
             db.add(admin_user)
             db.flush()

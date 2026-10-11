@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     apify_max_items: int = 25
     apify_run_timeout_seconds: int = 420
 
+    # Shared secret for the daily cron-job.org ping (POST /api/jobs/sync/scheduled).
+    cron_secret: str = ""
+
     admin_email: str = "admin@careerprep.com"
     admin_password: str = "Admin@12345"
 

@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import html
 import re
+import threading
 import time
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -1086,6 +1088,72 @@ def _safe_error(exc: BaseException) -> str:
     if settings.apify_token:
         message = message.replace(settings.apify_token, "***")
     return message[:500]
+
+
+_SYNC_LOCK = threading.Lock()
+
+# Manual top-ups between the daily auto-syncs, so learners never burn credits.
+MANUAL_REMOTE_COOLDOWN_SECONDS = 6 * 3600
+
+
+@contextmanager
+def sync_guard():
+    """Process-wide mutex: a single crawl at a time (credits + DB safety).
+
+    Every entry point that starts a crawl (admin, user, scheduler) must hold
+    this. Non-blocking: raises RuntimeError instead of queueing pile-ups.
+    """
+    if not _SYNC_LOCK.acquire(blocking=False):
+        raise RuntimeError("A job sync is already running - try again in a few minutes.")
+    try:
+        yield
+    finally:
+        _SYNC_LOCK.release()
+
+
+def remote_cooldown_remaining(db: Session) -> float:
+    """Seconds until another manual remote sync is allowed (0 = allowed now)."""
+    last = db.scalar(
+        select(func.max(Job.synced_at)).where(Job.type == "it", Job.category == "remote")
+    )
+    if last is None:
+        return 0.0
+    if last.tzinfo is not None:
+        # Postgres returns timestamptz as aware; stored instants are UTC.
+        last = last.replace(tzinfo=None)
+    elapsed = (naive_utc_now() - last).total_seconds()
+    return max(0.0, MANUAL_REMOTE_COOLDOWN_SECONDS - elapsed)
+
+
+def last_remote_sync_at(db: Session) -> datetime | None:
+    return db.scalar(
+        select(func.max(Job.synced_at)).where(Job.type == "it", Job.category == "remote")
+    )
+
+
+def run_scheduled_sync() -> dict:
+    """Daily cron body: refresh the whole board (main tracks, then remote).
+
+    Owns its DB session and is meant to run in a background thread so the cron
+    request returns instantly. Holds the guard across both phases.
+    """
+    from app.core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        with sync_guard():
+            reports: dict[str, dict] = {}
+            try:
+                reports["main"] = {"ok": True, **sync_jobs(db, None)}
+            except Exception as exc:  # noqa: BLE001 - one phase must not kill the other
+                reports["main"] = {"ok": False, "error": _safe_error(exc)}
+            try:
+                reports["remote"] = {"ok": True, **sync_remote_jobs(db)}
+            except Exception as exc:  # noqa: BLE001 - report, don't crash the worker
+                reports["remote"] = {"ok": False, "error": _safe_error(exc)}
+            return {"ok": all(report["ok"] for report in reports.values()), "reports": reports}
+    finally:
+        db.close()
 
 
 def sync_jobs(db: Session, tracks: list[str] | None = None) -> dict:

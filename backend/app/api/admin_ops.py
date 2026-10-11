@@ -23,7 +23,7 @@ from app.schemas.admin import (
     JobAdminUpdate,
 )
 from app.services.common import job_brief, naive_utc_now, profile_brief, unique_slug, user_brief
-from app.services.job_sync import sync_jobs, sync_remote_jobs, sync_status
+from app.services.job_sync import sync_guard, sync_jobs, sync_remote_jobs, sync_status
 
 router = APIRouter(tags=["admin"])
 
@@ -203,8 +203,12 @@ def admin_sync_jobs(
             )
     try:
         if tracks == ["remote"]:
-            return sync_remote_jobs(db)
-        return sync_jobs(db, tracks)
+            with sync_guard():
+                return sync_remote_jobs(db)
+        with sync_guard():
+            return sync_jobs(db, tracks)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

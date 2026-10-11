@@ -151,13 +151,18 @@ def db():
 
 @pytest.fixture(scope="session")
 def auth_headers(client):
-    token = client.post(
+    email = "quiz.runner@example.com"
+    reg = client.post(
         "/api/auth/register",
         json={
             "full_name": "Quiz Runner",
-            "email": "quiz.runner@example.com",
+            "email": email,
             "password": "Password123",
         },
     )
+    assert reg.status_code == 200, reg.text
+    dev_otp = reg.json().get("dev_otp")
+    assert dev_otp, "expected dev-mode OTP in register response"
+    token = client.post("/api/auth/verify-otp", json={"email": email, "otp": dev_otp})
     assert token.status_code == 200, token.text
     return {"Authorization": f"Bearer {token.json()['access_token']}"}

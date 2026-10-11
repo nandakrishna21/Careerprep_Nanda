@@ -37,7 +37,13 @@ export default function Login() {
       toast.success('Welcome back!');
       navigate(next, { replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Unable to sign in.');
+      const message = err instanceof Error ? err.message : 'Unable to sign in.';
+      if (message.toLowerCase().includes('verify your email')) {
+        toast('Please verify your email first - enter the code we sent you.');
+        navigate(`/verify-otp?email=${encodeURIComponent(email.trim())}`, { replace: true });
+        return;
+      }
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -88,7 +94,7 @@ export default function Login() {
             type="password"
             autoComplete="current-password"
             required
-            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />

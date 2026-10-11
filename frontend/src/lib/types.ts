@@ -28,6 +28,17 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface RegisterResponse {
+  user_id: number;
+  email: string;
+  otp_sent: boolean;
+  dev_otp?: string;
+}
+
+export interface ResendOtpResponse {
+  message: string;
+  dev_otp?: string;
+}
 export interface Topic {
   id: number;
   title: string;

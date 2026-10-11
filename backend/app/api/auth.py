@@ -19,10 +19,20 @@ from app.schemas.auth import (
     MessageResponse,
     MeResponse,
     RegisterRequest,
+    RegisterResponse,
+    ResendOtpRequest,
+    ResendOtpResponse,
     ResetPasswordRequest,
     TokenResponse,
+    VerifyOtpRequest,
 )
 from app.services.common import profile_brief, user_brief
+from app.services.email_otp import (
+    OtpError,
+    issue_signup_otp,
+    send_signup_otp,
+    verify_signup_otp,
+)
 from app.services.profiles import get_or_create_profile
 
 router = APIRouter(tags=["auth"])
@@ -73,7 +83,7 @@ def _send_reset_email(user: User, token: str) -> None:
         )
 
 
-@router.post("/register", response_model=TokenResponse)
+@router.post("/register", response_model=RegisterResponse, response_model_exclude_none=True)
 def register(payload: RegisterRequest, db: DbSession) -> dict:
     if _find_user_by_email(db, str(payload.email)) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -83,13 +93,50 @@ def register(payload: RegisterRequest, db: DbSession) -> dict:
         full_name=payload.full_name.strip(),
         role="student",
         is_active=True,
+        is_verified=False,
     )
     db.add(user)
     db.flush()
-    db.add(Profile(user_id=user.id, headline=f"{payload.full_name.strip()} — Aspirant"))
+    db.add(Profile(user_id=user.id, headline=f"{payload.full_name.strip()} - Aspirant"))
+    try:
+        plain, _ = issue_signup_otp(db, user)
+    except OtpError as exc:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
     db.commit()
     db.refresh(user)
+    emailed = send_signup_otp(user, plain)
+    response: dict = {"user_id": user.id, "email": user.email, "otp_sent": emailed}
+    if not emailed:
+        response["dev_otp"] = plain
+    return response
+
+
+@router.post("/verify-otp", response_model=TokenResponse)
+def verify_otp(payload: VerifyOtpRequest, db: DbSession) -> dict:
+    try:
+        user = verify_signup_otp(db, str(payload.email), payload.otp)
+    except OtpError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _issue_token(user)
+
+
+@router.post("/resend-otp", response_model=ResendOtpResponse, response_model_exclude_none=True)
+def resend_otp(payload: ResendOtpRequest, db: DbSession) -> dict:
+    generic = "If that email is registered, a fresh verification code has been sent."
+    user = _find_user_by_email(db, str(payload.email))
+    if user is None:
+        return {"message": generic}
+    if user.is_verified:
+        return {"message": "This email is already verified - please log in."}
+    try:
+        plain, _ = issue_signup_otp(db, user)
+    except OtpError as exc:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
+    emailed = send_signup_otp(user, plain)
+    response: dict = {"message": generic}
+    if not emailed:
+        response["dev_otp"] = plain
+    return response
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -99,6 +146,11 @@ def login(payload: LoginRequest, db: DbSession) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is inactive")
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email first - enter the OTP we sent you.",
+        )
     return _issue_token(user)
 
 

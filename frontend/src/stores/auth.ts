@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { get as apiGet, post as apiPost, errorMessage } from '../lib/api';
-import type { AuthResponse, Profile, User } from '../lib/types';
+import type { AuthResponse, Profile, RegisterResponse, ResendOtpResponse, User } from '../lib/types';
 
 interface AuthState {
   token: string | null;
@@ -10,7 +10,9 @@ interface AuthState {
   setSession: (token: string, user: User) => void;
   hydrate: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<RegisterResponse>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
+  resendOtp: (email: string) => Promise<ResendOtpResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -53,9 +55,25 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   register: async (full_name, email, password) => {
     try {
-      const data = await apiPost<AuthResponse>('/auth/register', { full_name, email, password });
+      return await apiPost<RegisterResponse>('/auth/register', { full_name, email, password });
+    } catch (err) {
+      throw new Error(errorMessage(err));
+    }
+  },
+
+  verifyOtp: async (email, otp) => {
+    try {
+      const data = await apiPost<AuthResponse>('/auth/verify-otp', { email, otp });
       get().setSession(data.access_token, data.user);
       await get().hydrate();
+    } catch (err) {
+      throw new Error(errorMessage(err));
+    }
+  },
+
+  resendOtp: async (email) => {
+    try {
+      return await apiPost<ResendOtpResponse>('/auth/resend-otp', { email });
     } catch (err) {
       throw new Error(errorMessage(err));
     }
