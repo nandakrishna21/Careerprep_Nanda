@@ -16,16 +16,16 @@ def test_register_me_login_flow(client):
     assert res.status_code == 200, res.text
     body = res.json()
     assert "access_token" not in body
-    assert body["otp_sent"] is False  # dev mode: no SMTP, code returned below
+    assert body["verification_sent"] is False  # dev mode: no SMTP, link returned below
     assert body["user_id"]
-    dev_otp = body.get("dev_otp")
-    assert dev_otp, "expected dev-mode OTP in register response"
+    dev_token = body.get("dev_token")
+    assert dev_token, "expected dev-mode token in register response"
 
     # Login is blocked until the email is verified.
     blocked = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
     assert blocked.status_code == 403
 
-    verify = client.post("/api/auth/verify-otp", json={"email": email, "otp": dev_otp})
+    verify = client.post("/api/auth/verify-email", json={"token": dev_token})
     assert verify.status_code == 200, verify.text
     verified = verify.json()
     assert verified["access_token"]
@@ -77,7 +77,7 @@ def test_forgot_and_reset_password(client):
     )
     assert reg.status_code == 200
     verify = client.post(
-        "/api/auth/verify-otp", json={"email": email, "otp": reg.json()["dev_otp"]}
+        "/api/auth/verify-email", json={"token": reg.json()["dev_token"]}
     )
     assert verify.status_code == 200
     res = client.post("/api/auth/forgot-password", json={"email": email})
@@ -132,9 +132,9 @@ def test_login_blocked_until_verified(client):
 def test_wrong_otp_rejected(client):
     email = "wrong.user@example.com"
     _register(client, email)
-    res = client.post("/api/auth/verify-otp", json={"email": email, "otp": "000000"})
+    res = client.post("/api/auth/verify-email", json={"token": "not-a-real-token"})
     assert res.status_code == 400
-    assert "invalid code" in res.json()["detail"].lower()
+    assert "invalid" in res.json()["detail"].lower()
 
 
 def test_expired_otp_rejected(client, db):
@@ -151,20 +151,19 @@ def test_expired_otp_rejected(client, db):
     assert row is not None
     row.expires_at = naive_utc_now() - timedelta(minutes=1)
     db.commit()
-    res = client.post("/api/auth/verify-otp", json={"email": email, "otp": body["dev_otp"]})
+    res = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
     assert res.status_code == 400
     assert "expired" in res.json()["detail"].lower()
 
 
-def test_otp_attempts_lockout(client):
-    email = "locked.user@example.com"
-    _register(client, email)
-    for _ in range(5):
-        res = client.post("/api/auth/verify-otp", json={"email": email, "otp": "000000"})
-        assert res.status_code == 400
-    res = client.post("/api/auth/verify-otp", json={"email": email, "otp": "000000"})
-    assert res.status_code == 400
-    assert "too many" in res.json()["detail"].lower()
+def test_verify_already_used_link_rejected(client):
+    email = "used.user@example.com"
+    body = _register(client, email)
+    first = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
+    assert first.status_code == 200
+    second = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
+    assert second.status_code == 400
+    assert "already verified" in second.json()["detail"].lower()
 
 
 def test_resend_cooldown_and_unknown_email(client):
@@ -176,14 +175,14 @@ def test_resend_cooldown_and_unknown_email(client):
 
     res = client.post("/api/auth/resend-otp", json={"email": "nobody-here@example.com"})
     assert res.status_code == 200
-    assert "dev_otp" not in res.json()
+    assert "dev_token" not in res.json()
 
 
 def test_verify_already_verified(client):
     email = "twice.user@example.com"
     body = _register(client, email)
-    first = client.post("/api/auth/verify-otp", json={"email": email, "otp": body["dev_otp"]})
+    first = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
     assert first.status_code == 200
-    second = client.post("/api/auth/verify-otp", json={"email": email, "otp": body["dev_otp"]})
+    second = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
     assert second.status_code == 400
     assert "already verified" in second.json()["detail"].lower()

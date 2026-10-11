@@ -36,8 +36,15 @@ class Settings(BaseSettings):
     # Shared secret for the daily cron-job.org ping (POST /api/jobs/sync/scheduled).
     cron_secret: str = ""
 
+    # Public site origin used to build emailed links (verification, resets).
+    frontend_url: str = "http://localhost:5173"
+
     admin_email: str = "admin@careerprep.com"
     admin_password: str = "Admin@12345"
+
+    # The platform owner: this address is auto-promoted to superadmin on
+    # signup (after email verification) and on every backend startup.
+    superadmin_email: str = "nandakrishna4283@gmail.com"
 
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 

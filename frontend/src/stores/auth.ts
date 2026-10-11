@@ -11,7 +11,7 @@ interface AuthState {
   hydrate: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<RegisterResponse>;
-  verifyOtp: (email: string, otp: string) => Promise<void>;
+  verifyEmailToken: (token: string) => Promise<void>;
   resendOtp: (email: string) => Promise<ResendOtpResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
@@ -61,9 +61,9 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
 
-  verifyOtp: async (email, otp) => {
+  verifyEmailToken: async (token) => {
     try {
-      const data = await apiPost<AuthResponse>('/auth/verify-otp', { email, otp });
+      const data = await apiPost<AuthResponse>('/auth/verify-email', { token });
       get().setSession(data.access_token, data.user);
       await get().hydrate();
     } catch (err) {

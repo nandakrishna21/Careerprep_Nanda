@@ -10,7 +10,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
+  import {
+    Bell,
     BookOpen,
     ChevronDown,
     ChevronRight,
@@ -44,16 +45,17 @@ import { formatDate, titleCase, toItems } from '../../components/helpers';
 import { useAuth } from '../../stores/auth';
 import { useTheme } from '../../stores/theme';
 
-type TabKey = 'analytics' | 'courses' | 'quizzes' | 'content' | 'jobs' | 'users';
+type TabKey = 'analytics' | 'courses' | 'quizzes' | 'content' | 'jobs' | 'users' | 'notifications';
 
-const TABS: { key: TabKey; label: string; to: string; icon: typeof LayoutGrid }[] = [
+const TABS: { key: TabKey; label: string; to: string; icon: typeof LayoutGrid; superadminOnly?: boolean }[] = [
   { key: 'analytics', label: 'Analytics', to: '/admin', icon: LayoutGrid },
   { key: 'courses', label: 'Courses', to: '/admin/courses', icon: BookOpen },
   { key: 'quizzes', label: 'Quizzes', to: '/admin/quizzes', icon: ListChecks },
   { key: 'content', label: 'Content', to: '/admin/content', icon: FileText },
-  { key: 'jobs', label: 'Jobs', to: '/admin/jobs', icon: ImageIcon },
-  { key: 'users', label: 'Users', to: '/admin/users', icon: Users },
-];
+    { key: 'jobs', label: 'Jobs', to: '/admin/jobs', icon: ImageIcon },
+    { key: 'users', label: 'Users', to: '/admin/users', icon: Users },
+    { key: 'notifications', label: 'Notifications', to: '/admin/notifications', icon: Bell, superadminOnly: true },
+  ];
 
 interface AnalyticsData {
   users_total: number;
@@ -147,10 +149,12 @@ function Labeled({ label, children }: { label: string; children: React.ReactNode
 
 export default function Admin() {
   const location = useLocation();
+  const { user } = useAuth();
   const segment = location.pathname.split('/')[2] ?? '';
-  const tab: TabKey = (['courses', 'quizzes', 'content', 'jobs', 'users'] as string[]).includes(segment)
+  const tab: TabKey = (['courses', 'quizzes', 'content', 'jobs', 'users', 'notifications'] as string[]).includes(segment)
     ? (segment as TabKey)
     : 'analytics';
+  const visibleTabs = TABS.filter((t) => !t.superadminOnly || user?.role === 'superadmin');
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -162,7 +166,7 @@ export default function Admin() {
       </div>
 
       <nav className="flex flex-wrap gap-2 border-b border-slate-200 pb-2 dark:border-slate-800">
-        {TABS.map((t) => {
+        {visibleTabs.map((t) => {
           const active = t.key === tab;
           const Icon = t.icon;
           return (
@@ -188,6 +192,7 @@ export default function Admin() {
       {tab === 'content' && <ContentPanel />}
       {tab === 'jobs' && <JobsPanel />}
       {tab === 'users' && <UsersPanel />}
+      {tab === 'notifications' && <NotificationsPanel />}
     </div>
   );
 }
@@ -2023,6 +2028,96 @@ interface SyncResult {
   sources: SyncRun[];
 }
 
+interface AdminNotification {
+  id: number;
+  title: string;
+  body: string;
+  type: string;
+  is_read: boolean;
+  created_at: string | null;
+}
+
+function NotificationsPanel() {
+  const [items, setItems] = useState<AdminNotification[] | null>(null);
+  const [unread, setUnread] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    try {
+      const data = await get<{ items: AdminNotification[]; unread_count: number }>(
+        '/admin/notifications'
+      );
+      setItems(data.items ?? []);
+      setUnread(data.unread_count ?? 0);
+    } catch (err) {
+      toast.error(errorMessage(err));
+      setItems([]);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => void load(), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const markAllRead = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await post('/admin/notifications/read', {});
+      toast.success('All notifications marked as read');
+      await load();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <PageNote>
+          {items === null ? 'Loading…' : `${items.length} notifications`}
+          {unread > 0 && ` · ${unread} unread`}
+        </PageNote>
+        <Button variant="outline" onClick={() => void markAllRead()} loading={busy} disabled={unread === 0}>
+          <Bell className="h-4 w-4" /> Mark all read
+        </Button>
+      </div>
+
+      {items === null ? (
+        <Spinner />
+      ) : items.length === 0 ? (
+        <EmptyState title="No notifications" description="New signups and alerts will appear here." />
+      ) : (
+        <div className="space-y-2">
+          {items.map((n) => (
+            <div
+              key={n.id}
+              className={`card flex items-start gap-3 p-4 ${n.is_read ? 'opacity-70' : 'border-brand-300 dark:border-brand-500/40'}`}
+            >
+              <span
+                className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${n.is_read ? 'bg-slate-300 dark:bg-slate-600' : 'bg-brand-500'}`}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{n.title}</p>
+                {n.body && <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{n.body}</p>}
+                <p className="mt-1 text-[11px] text-slate-400">
+                  {n.type.replace(/_/g, ' ')}
+                  {n.created_at ? ` · ${formatDate(n.created_at)}` : ''}
+                </p>
+              </div>
+              {!n.is_read && <Badge color="brand">new</Badge>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function JobsPanel() {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [modal, setModal] = useState<JobFormState | null>(null);
@@ -2473,6 +2568,9 @@ function UsersPanel() {
                       >
                         <option value="student">student</option>
                         <option value="admin">admin</option>
+                        {user?.role === 'superadmin' && (
+                          <option value="superadmin">superadmin</option>
+                        )}
                       </select>
                       {isSelf && <p className="mt-0.5 text-[10px] text-slate-400">own role is locked</p>}
                     </td>

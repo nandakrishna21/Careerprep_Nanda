@@ -60,11 +60,18 @@ def get_current_user(
 
 
 def require_admin(current_user=Depends(get_current_user)):
-    if current_user.role != "admin":
+    if current_user.role not in ("admin", "superadmin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user
+
+
+def require_superadmin(current_user=Depends(get_current_user)):
+    if current_user.role != "superadmin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super admin access required")
     return current_user
 
 
 CurrentUser = Annotated[object, Depends(get_current_user)]
 AdminUser = Annotated[object, Depends(require_admin)]
+SuperAdminUser = Annotated[object, Depends(require_superadmin)]
 DbSession = Annotated[Session, Depends(get_db)]

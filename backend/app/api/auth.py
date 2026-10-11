@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import CurrentUser, DbSession, create_access_token, hash_password, verify_password
-from app.models import PasswordResetToken, Profile, User
+from app.models import Notification, PasswordResetToken, Profile, User
 from app.schemas.auth import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -24,14 +24,15 @@ from app.schemas.auth import (
     ResendOtpResponse,
     ResetPasswordRequest,
     TokenResponse,
-    VerifyOtpRequest,
+    VerifyEmailRequest,
 )
 from app.services.common import profile_brief, user_brief
 from app.services.email_otp import (
     OtpError,
-    issue_signup_otp,
-    send_signup_otp,
-    verify_signup_otp,
+    consume_verify_token,
+    issue_verify_link,
+    send_verification_email,
+    verification_link,
 )
 from app.services.profiles import get_or_create_profile
 
@@ -91,7 +92,10 @@ def register(payload: RegisterRequest, db: DbSession) -> dict:
         email=str(payload.email).strip().lower(),
         hashed_password=hash_password(payload.password),
         full_name=payload.full_name.strip(),
-        role="student",
+        role="superadmin"
+        if str(payload.email).strip().lower() == settings.superadmin_email.strip().lower()
+        and settings.superadmin_email.strip()
+        else "student",
         is_active=True,
         is_verified=False,
     )
@@ -99,22 +103,34 @@ def register(payload: RegisterRequest, db: DbSession) -> dict:
     db.flush()
     db.add(Profile(user_id=user.id, headline=f"{payload.full_name.strip()} - Aspirant"))
     try:
-        plain, _ = issue_signup_otp(db, user)
+        plain, _ = issue_verify_link(db, user)
     except OtpError as exc:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
     db.commit()
     db.refresh(user)
-    emailed = send_signup_otp(user, plain)
-    response: dict = {"user_id": user.id, "email": user.email, "otp_sent": emailed}
+    for owner in db.scalars(
+        select(User).where(User.role == "superadmin", User.id != user.id)
+    ).all():
+        db.add(
+            Notification(
+                user_id=owner.id,
+                title="New user signed up",
+                body=f"{user.full_name} ({user.email}) just created an account.",
+                type="user_signup",
+            )
+        )
+    db.commit()
+    emailed = send_verification_email(user, verification_link(plain))
+    response: dict = {"user_id": user.id, "email": user.email, "verification_sent": emailed}
     if not emailed:
-        response["dev_otp"] = plain
+        response["dev_token"] = plain
     return response
 
 
-@router.post("/verify-otp", response_model=TokenResponse)
-def verify_otp(payload: VerifyOtpRequest, db: DbSession) -> dict:
+@router.post("/verify-email", response_model=TokenResponse)
+def verify_email(payload: VerifyEmailRequest, db: DbSession) -> dict:
     try:
-        user = verify_signup_otp(db, str(payload.email), payload.otp)
+        user = consume_verify_token(db, payload.token)
     except OtpError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _issue_token(user)
@@ -122,20 +138,20 @@ def verify_otp(payload: VerifyOtpRequest, db: DbSession) -> dict:
 
 @router.post("/resend-otp", response_model=ResendOtpResponse, response_model_exclude_none=True)
 def resend_otp(payload: ResendOtpRequest, db: DbSession) -> dict:
-    generic = "If that email is registered, a fresh verification code has been sent."
+    generic = "If that email is registered, a fresh verification link has been sent."
     user = _find_user_by_email(db, str(payload.email))
     if user is None:
         return {"message": generic}
     if user.is_verified:
         return {"message": "This email is already verified - please log in."}
     try:
-        plain, _ = issue_signup_otp(db, user)
+        plain, _ = issue_verify_link(db, user)
     except OtpError as exc:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
-    emailed = send_signup_otp(user, plain)
+    emailed = send_verification_email(user, verification_link(plain))
     response: dict = {"message": generic}
     if not emailed:
-        response["dev_otp"] = plain
+        response["dev_token"] = plain
     return response
 
 
@@ -149,7 +165,7 @@ def login(payload: LoginRequest, db: DbSession) -> dict:
     if not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please verify your email first - enter the OTP we sent you.",
+            detail="Please verify your email first - click the verification link we sent you.",
         )
     return _issue_token(user)
 

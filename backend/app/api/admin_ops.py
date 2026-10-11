@@ -5,11 +5,12 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, or_, select
 
-from app.core.security import AdminUser, DbSession
+from app.core.security import AdminUser, DbSession, SuperAdminUser
 from app.models import (
     Course,
     CurrentAffair,
     Job,
+    Notification,
     Profile,
     Quiz,
     QuizAttempt,
@@ -22,6 +23,7 @@ from app.schemas.admin import (
     JobAdminCreate,
     JobAdminUpdate,
 )
+from app.schemas.misc import NotificationReadRequest
 from app.services.common import job_brief, naive_utc_now, profile_brief, unique_slug, user_brief
 from app.services.job_sync import sync_guard, sync_jobs, sync_remote_jobs, sync_status
 
@@ -258,11 +260,21 @@ def admin_update_user(id: int, payload: AdminUserUpdate, admin: AdminUser, db: D
     if target is None:
         raise _not_found("User not found")
     data = payload.model_dump(exclude_unset=True)
+    if target.role == "superadmin" and admin.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only a super admin can modify a super admin account",
+        )
+    if data.get("role") == "superadmin" and admin.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only a super admin can grant the super admin role",
+        )
     if target.id == admin.id:
-        if "role" in data and data["role"] != "admin":
+        if "role" in data and data["role"] != admin.role:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You cannot remove your own admin role",
+                detail="You cannot change your own role",
             )
         if data.get("is_active") is False:
             raise HTTPException(
@@ -286,9 +298,62 @@ def admin_delete_user(id: int, admin: AdminUser, db: DbSession) -> dict:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot delete your own account"
         )
+    if target.role == "superadmin" and admin.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only a super admin can delete a super admin account",
+        )
     db.delete(target)
     db.commit()
     return {"message": "User deleted"}
+
+
+@router.get("/notifications")
+def admin_list_notifications(admin: SuperAdminUser, db: DbSession) -> dict:
+    """Signup (and future admin) notifications for the super admin."""
+    rows = db.scalars(
+        select(Notification)
+        .where(Notification.user_id == admin.id)
+        .order_by(Notification.created_at.desc(), Notification.id.desc())
+        .limit(50)
+    ).all()
+    unread = db.scalar(
+        select(func.count(Notification.id)).where(
+            Notification.user_id == admin.id, Notification.is_read.is_(False)
+        )
+    ) or 0
+    return {
+        "items": [
+            {
+                "id": row.id,
+                "title": row.title,
+                "body": row.body or "",
+                "type": row.type or "info",
+                "is_read": row.is_read,
+                "created_at": row.created_at,
+            }
+            for row in rows
+        ],
+        "unread_count": int(unread),
+    }
+
+
+@router.post("/notifications/read")
+def admin_mark_notifications_read(
+    payload: NotificationReadRequest, admin: SuperAdminUser, db: DbSession
+) -> dict:
+    stmt = select(Notification).where(
+        Notification.user_id == admin.id, Notification.is_read.is_(False)
+    )
+    if payload.ids is not None:
+        if not payload.ids:
+            return {"message": "No notifications updated", "updated": 0}
+        stmt = stmt.where(Notification.id.in_(payload.ids))
+    rows = db.scalars(stmt).all()
+    for row in rows:
+        row.is_read = True
+    db.commit()
+    return {"message": "Notifications marked as read", "updated": len(rows)}
 
 
 @router.get("/analytics")

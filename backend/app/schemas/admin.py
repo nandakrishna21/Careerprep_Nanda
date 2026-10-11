@@ -165,5 +165,5 @@ class JobAdminUpdate(BaseModel):
 
 
 class AdminUserUpdate(BaseModel):
-    role: Literal["student", "admin"] | None = None
+    role: Literal["student", "admin", "superadmin"] | None = None
     is_active: bool | None = None

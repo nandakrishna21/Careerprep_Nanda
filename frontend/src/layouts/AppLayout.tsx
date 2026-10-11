@@ -134,7 +134,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 overflow-y-auto px-3 pb-6">
           {nav.map((group) => {
-            const items = group.items.filter((i) => !i.adminOnly || user?.role === 'admin');
+            const items = group.items.filter(
+              (i) => !i.adminOnly || user?.role === 'admin' || user?.role === 'superadmin'
+            );
             if (!items.length) return null;
             return (
               <div key={group.label} className="mb-5">

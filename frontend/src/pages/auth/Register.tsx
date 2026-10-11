@@ -33,8 +33,8 @@ export default function Register() {
     setLoading(true);
     try {
       await register(name.trim(), email.trim(), password);
-      toast.success('Account created - check your email for the verification code.');
-      navigate(`/verify-otp?email=${encodeURIComponent(email.trim())}`, { replace: true });
+      toast.success('Account created - check your email for the verification link.');
+      navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`, { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unable to register.');
     } finally {

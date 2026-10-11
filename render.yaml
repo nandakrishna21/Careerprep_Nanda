@@ -33,6 +33,9 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: https://careerprep-nanda.vercel.app,http://localhost:5173,http://localhost:3000
+      # Origin stamped into emailed verification links. Must match the live site.
+      - key: FRONTEND_URL
+        value: https://careerprep-nanda.vercel.app
       - key: DATABASE_URL
         sync: false
       - key: GEMINI_API_KEY
@@ -47,6 +50,10 @@ services:
         value: admin@careerprep.com
       - key: ADMIN_PASSWORD
         sync: false
+      # Platform owner: auto-promoted to superadmin on signup/startup and
+      # notified in the admin panel on every new signup.
+      - key: SUPERADMIN_EMAIL
+        value: nandakrishna4283@gmail.com
       # Signup now sends an OTP email: production REQUIRES working SMTP or
       # registration fails. Free options: Gmail app password
       # (smtp.gmail.com:587) or Brevo free tier (smtp-relay.brevo.com:587).

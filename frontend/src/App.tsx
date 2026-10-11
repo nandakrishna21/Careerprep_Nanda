@@ -8,7 +8,7 @@ import { Spinner } from './components/ui';
 import Landing from './pages/Landing';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import VerifyOtp from './pages/auth/VerifyOtp';
+import VerifyEmail from './pages/auth/VerifyEmail';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 
@@ -56,7 +56,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
 function RequireAdmin({ children }: { children: ReactNode }) {
   const { user, hydrated } = useAuth();
   if (!hydrated) return <Spinner />;
-  if (user?.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  if (user?.role !== 'admin' && user?.role !== 'superadmin') return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -87,7 +87,7 @@ export default function App() {
       />
       <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
       <Route path="/register" element={<PublicLayout><Register /></PublicLayout>} />
-      <Route path="/verify-otp" element={<PublicLayout><VerifyOtp /></PublicLayout>} />
+      <Route path="/verify-email" element={<PublicLayout><VerifyEmail /></PublicLayout>} />
       <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />
       <Route path="/reset-password" element={<PublicLayout><ResetPassword /></PublicLayout>} />
 

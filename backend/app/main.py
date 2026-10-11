@@ -56,6 +56,13 @@ async def lifespan(_: FastAPI):
             db.add(admin_user)
             db.flush()
             db.add(Profile(user_id=admin_user.id, headline="Platform Administrator"))
+        super_email = settings.superadmin_email.strip().lower()
+        if super_email:
+            owner = db.scalar(select(User).where(func.lower(User.email) == super_email))
+            if owner is not None and owner.role != "superadmin":
+                owner.role = "superadmin"
+                owner.is_active = True
+                owner.is_verified = True
         db.commit()
         achievements.ensure_defaults(db)
     finally:

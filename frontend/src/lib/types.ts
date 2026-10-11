@@ -2,7 +2,7 @@ export interface User {
   id: number;
   full_name: string;
   email: string;
-  role: 'student' | 'admin';
+  role: 'student' | 'admin' | 'superadmin';
   is_active?: boolean;
   created_at?: string;
 }
@@ -31,13 +31,13 @@ export interface AuthResponse {
 export interface RegisterResponse {
   user_id: number;
   email: string;
-  otp_sent: boolean;
-  dev_otp?: string;
+  verification_sent: boolean;
+  dev_token?: string;
 }
 
 export interface ResendOtpResponse {
   message: string;
-  dev_otp?: string;
+  dev_token?: string;
 }
 export interface Topic {
   id: number;

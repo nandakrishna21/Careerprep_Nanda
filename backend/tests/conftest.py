@@ -161,8 +161,8 @@ def auth_headers(client):
         },
     )
     assert reg.status_code == 200, reg.text
-    dev_otp = reg.json().get("dev_otp")
-    assert dev_otp, "expected dev-mode OTP in register response"
-    token = client.post("/api/auth/verify-otp", json={"email": email, "otp": dev_otp})
+    dev_token = reg.json().get("dev_token")
+    assert dev_token, "expected dev-mode token in register response"
+    token = client.post("/api/auth/verify-email", json={"token": dev_token})
     assert token.status_code == 200, token.text
     return {"Authorization": f"Bearer {token.json()['access_token']}"}
