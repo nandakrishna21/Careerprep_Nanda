@@ -1,49 +1,51 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, Suspense, lazy, useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './stores/auth';
 import PublicLayout from './layouts/PublicLayout';
 import AppLayout from './layouts/AppLayout';
 import { Spinner } from './components/ui';
 
-import Landing from './pages/Landing';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import PendingApproval from './pages/auth/PendingApproval';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import ResetPassword from './pages/auth/ResetPassword';
+// Route pages are lazy-loaded so the first paint only downloads the
+// framework + the current route instead of the whole 900 kB+ bundle.
+const Landing = lazy(() => import('./pages/Landing'));
+const Login = lazy(() => import('./pages/auth/Login'));
+const Register = lazy(() => import('./pages/auth/Register'));
+const PendingApproval = lazy(() => import('./pages/auth/PendingApproval'));
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 
-import Dashboard from './pages/dashboard/Dashboard';
-import Leaderboard from './pages/Leaderboard';
-import Search from './pages/Search';
-import Profile from './pages/Profile';
-import NotFound from './pages/NotFound';
+const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
+const Leaderboard = lazy(() => import('./pages/Leaderboard'));
+const Search = lazy(() => import('./pages/Search'));
+const Profile = lazy(() => import('./pages/Profile'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
-import GovDashboard from './pages/gov/GovDashboard';
-import GovExamDetail from './pages/gov/GovExamDetail';
-import TopicDetail from './pages/gov/TopicDetail';
-import MockTests from './pages/gov/MockTests';
-import MockTestDetail from './pages/gov/MockTestDetail';
-import Pyqs from './pages/gov/Pyqs';
-import CurrentAffairs from './pages/gov/CurrentAffairs';
-import CurrentAffairDetail from './pages/gov/CurrentAffairDetail';
+const GovDashboard = lazy(() => import('./pages/gov/GovDashboard'));
+const GovExamDetail = lazy(() => import('./pages/gov/GovExamDetail'));
+const TopicDetail = lazy(() => import('./pages/gov/TopicDetail'));
+const MockTests = lazy(() => import('./pages/gov/MockTests'));
+const MockTestDetail = lazy(() => import('./pages/gov/MockTestDetail'));
+const Pyqs = lazy(() => import('./pages/gov/Pyqs'));
+const CurrentAffairs = lazy(() => import('./pages/gov/CurrentAffairs'));
+const CurrentAffairDetail = lazy(() => import('./pages/gov/CurrentAffairDetail'));
 
-import ItDashboard from './pages/it/ItDashboard';
-import CareerPathDetail from './pages/it/CareerPathDetail';
-import LearningPath from './pages/it/LearningPath';
-import ItMockTests from './pages/it/ItMockTests';
+const ItDashboard = lazy(() => import('./pages/it/ItDashboard'));
+const CareerPathDetail = lazy(() => import('./pages/it/CareerPathDetail'));
+const LearningPath = lazy(() => import('./pages/it/LearningPath'));
+const ItMockTests = lazy(() => import('./pages/it/ItMockTests'));
 
-import DsaPrepWay from './pages/dsa/DsaPrepWay';
+const DsaPrepWay = lazy(() => import('./pages/dsa/DsaPrepWay'));
 
-import QuizRunner from './pages/quiz/QuizRunner';
+const QuizRunner = lazy(() => import('./pages/quiz/QuizRunner'));
 
-import AiQuizGenerator from './pages/ai/AiQuizGenerator';
-import AiInterview from './pages/ai/AiInterview';
-import AiPlanner from './pages/ai/AiPlanner';
-import AiResume from './pages/ai/AiResume';
-import AiResumeAnalyze from './pages/ai/AiResumeAnalyze';
+const AiQuizGenerator = lazy(() => import('./pages/ai/AiQuizGenerator'));
+const AiInterview = lazy(() => import('./pages/ai/AiInterview'));
+const AiPlanner = lazy(() => import('./pages/ai/AiPlanner'));
+const AiResume = lazy(() => import('./pages/ai/AiResume'));
+const AiResumeAnalyze = lazy(() => import('./pages/ai/AiResumeAnalyze'));
 
-import Jobs from './pages/jobs/Jobs';
-import Admin from './pages/admin/Admin';
+const Jobs = lazy(() => import('./pages/jobs/Jobs'));
+const Admin = lazy(() => import('./pages/admin/Admin'));
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { token, hydrated } = useAuth();
@@ -76,6 +78,13 @@ export default function App() {
   }
 
   return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Spinner />
+        </div>
+      }
+    >
     <Routes>
       <Route
         path="/"
@@ -142,5 +151,6 @@ export default function App() {
         }
       />
     </Routes>
+    </Suspense>
   );
 }
