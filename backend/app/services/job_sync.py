@@ -1289,6 +1289,31 @@ def run_scheduled_sync() -> dict:
         db.close()
 
 
+def run_sync_in_background(tracks: list[str] | None) -> None:
+    """Admin-button worker: same crawls as the blocking endpoints, but on a
+    background thread with its own DB session so the HTTP request (and the
+    admin's browser) never waits minutes for 40+ actor runs. Progress is
+    observable via rising ``synced_at`` in the sync-status endpoints."""
+    from app.core.database import SessionLocal
+
+    label = ",".join(tracks) if tracks else "all"
+    db = SessionLocal()
+    try:
+        with sync_guard():
+            if tracks == ["remote"]:
+                report = sync_remote_jobs(db)
+            else:
+                report = sync_jobs(db, tracks)
+        print(
+            f"[admin-sync] done: tracks={label} ok={report.get('ok')} "
+            f"synced={report.get('synced_total')} new={report.get('created')}"
+        )
+    except Exception as exc:  # noqa: BLE001 - background failures belong in logs
+        print(f"[admin-sync] failed: tracks={label} error={_safe_error(exc)}")
+    finally:
+        db.close()
+
+
 def sync_jobs(db: Session, tracks: list[str] | None = None) -> dict:
     """Run the configured sources and merge their rows into the jobs table."""
     started_monotonic = time.monotonic()

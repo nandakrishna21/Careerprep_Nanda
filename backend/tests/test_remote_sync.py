@@ -270,3 +270,14 @@ def test_scheduled_sync_needs_configured_secret(client, db, monkeypatch):
     monkeypatch.setattr(settings, "cron_secret", "")
     res = client.post("/api/jobs/sync/scheduled", params={"token": "anything"})
     assert res.status_code == 503
+
+
+def test_admin_sync_accepts_background_flag(client):
+    # Wiring only: executing a background sync would crawl for real, so the
+    # OpenAPI schema (not the endpoint) proves the param is accepted.
+    spec = client.get("/openapi.json").json()
+    params = {
+        p["name"]
+        for p in spec["paths"]["/api/admin/jobs/sync"]["post"].get("parameters", [])
+    }
+    assert {"track", "background"} <= params

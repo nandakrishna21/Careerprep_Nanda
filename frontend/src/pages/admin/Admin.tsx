@@ -2153,29 +2153,24 @@ function JobsPanel() {
   const runSync = async () => {
     if (syncing) return;
     if (syncStatus && !syncStatus.token_configured) {
-      toast.error('Set APIFY_TOKEN in .env before syncing live jobs.');
+      toast.error('Set APIFY_TOKEN on Render (Environment) before syncing live jobs.');
       return;
     }
     setSyncing(true);
-    toast.loading('Crawling job boards — this can take a few minutes…', { id: 'job-sync' });
+    const before = syncStatus?.last_synced_at ?? null;
+    toast.loading('Sync started — crawling in the background…', { id: 'job-sync' });
     try {
-      const result = await post<SyncResult>('/admin/jobs/sync');
-      setSyncResult(result);
-      const failed = result.sources.filter((run) => !run.ok);
-      if (failed.length) {
-        toast.error(
-          `Synced ${result.jobs_total} jobs, but ${failed.length} source(s) failed: ${failed
-            .map((run) => run.key ?? 'source')
-            .join(', ')}`,
-          { id: 'job-sync', duration: 8000 }
-        );
-      } else {
-        toast.success(
-          `Synced ${result.synced_total} listings · ${result.created} new · ${result.updated} updated`,
-          { id: 'job-sync', duration: 6000 }
-        );
-      }
+      await post<{ started: boolean }>('/admin/jobs/sync?background=true');
+      const fresh = await pollForFreshSync('job-sync', before);
       await Promise.all([load(), loadStatus()]);
+      if (fresh) {
+        toast.success('Board refreshed — fresh listings are live.', { id: 'job-sync', duration: 6000 });
+      } else {
+        toast('Still crawling — latest data loaded, check back in a bit.', {
+          id: 'job-sync',
+          duration: 8000,
+        });
+      }
     } catch (err) {
       toast.error(errorMessage(err), { id: 'job-sync', duration: 8000 });
     } finally {
@@ -2186,34 +2181,53 @@ function JobsPanel() {
   const runRemoteSync = async () => {
     if (syncing) return;
     if (syncStatus && !syncStatus.token_configured) {
-      toast.error('Set APIFY_TOKEN in .env before syncing remote jobs.');
+      toast.error('Set APIFY_TOKEN on Render (Environment) before syncing remote jobs.');
       return;
     }
     setSyncing(true);
-    toast.loading('Crawling remote job boards — this can take a few minutes…', { id: 'job-sync-remote' });
+    const before = syncStatus?.last_synced_at ?? null;
+    toast.loading('Remote sync started — crawling in the background…', { id: 'job-sync-remote' });
     try {
-      const result = await post<SyncResult>('/admin/jobs/sync?track=remote');
-      setSyncResult(result);
-      const failed = result.sources.filter((run) => !run.ok);
-      if (failed.length) {
-        toast.error(
-          `Synced ${result.jobs_total} jobs, but ${failed.length} source(s) failed: ${failed
-            .map((run) => run.key ?? 'source')
-            .join(', ')}`,
-          { id: 'job-sync-remote', duration: 8000 }
-        );
-      } else {
-        toast.success(
-          `Synced ${result.synced_total} remote listings · ${result.created} new · ${result.updated} updated`,
-          { id: 'job-sync-remote', duration: 6000 }
-        );
-      }
+      await post<{ started: boolean }>('/admin/jobs/sync?track=remote&background=true');
+      const fresh = await pollForFreshSync('job-sync-remote', before);
       await Promise.all([load(), loadStatus()]);
+      if (fresh) {
+        toast.success('Remote board refreshed — fresh listings are live.', {
+          id: 'job-sync-remote',
+          duration: 6000,
+        });
+      } else {
+        toast('Still crawling — latest data loaded, check back in a bit.', {
+          id: 'job-sync-remote',
+          duration: 8000,
+        });
+      }
     } catch (err) {
       toast.error(errorMessage(err), { id: 'job-sync-remote', duration: 8000 });
     } finally {
       setSyncing(false);
     }
+  };
+
+  const pollForFreshSync = async (toastId: string, before: string | null) => {
+    const t0 = Date.now();
+    for (let i = 0; i < 100; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      const elapsed = Math.round((Date.now() - t0) / 1000);
+      const label = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
+      let status: SyncStatus | null = null;
+      try {
+        status = await get<SyncStatus>('/admin/jobs/sync/status');
+        setSyncStatus(status);
+      } catch {
+        /* keep polling through blips */
+      }
+      if (status?.last_synced_at && status.last_synced_at !== before) return true;
+      toast.loading(`Crawling… ${label} elapsed — safe to keep browsing, it finishes on its own.`, {
+        id: toastId,
+      });
+    }
+    return false;
   };
 
   const saveJob = async (e: FormEvent) => {

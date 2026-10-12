@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from sqlalchemy import func, or_, select
 
 from app.core.security import AdminUser, DbSession, SuperAdminUser
@@ -25,7 +25,7 @@ from app.schemas.admin import (
 )
 from app.schemas.misc import NotificationReadRequest
 from app.services.common import job_brief, naive_utc_now, profile_brief, unique_slug, user_brief
-from app.services.job_sync import sync_guard, sync_jobs, sync_remote_jobs, sync_status
+from app.services.job_sync import run_sync_in_background, sync_guard, sync_jobs, sync_remote_jobs, sync_status
 
 router = APIRouter(tags=["admin"])
 
@@ -186,9 +186,19 @@ def admin_jobs_sync_status(admin: AdminUser, db: DbSession) -> dict:
 
 @router.post("/jobs/sync")
 def admin_sync_jobs(
-    admin: AdminUser, db: DbSession, track: str | None = None
+    admin: AdminUser,
+    db: DbSession,
+    background_tasks: BackgroundTasks,
+    track: str | None = None,
+    background: bool = False,
 ) -> dict:
-    """Run the live job crawl. Blocks until every source has finished or failed."""
+    """Run the live job crawl.
+
+    Blocking by default; with ``?background=true`` the crawl runs on a worker
+    thread and the request returns instantly (the browser must not wait out
+    40+ actor runs). Poll ``GET /jobs/sync/status`` until ``last_synced_at``
+    advances, then reload the board.
+    """
     tracks: list[str] | None = None
     if track:
         tracks = [part.strip() for part in track.split(",") if part.strip()]
@@ -203,6 +213,9 @@ def admin_sync_jobs(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Run the 'remote' track on its own: ?track=remote.",
             )
+    if background:
+        background_tasks.add_task(run_sync_in_background, tracks)
+        return {"started": True, "tracks": tracks or ["government", "it"]}
     try:
         if tracks == ["remote"]:
             with sync_guard():
