@@ -174,6 +174,7 @@ export interface Job {
     source: string;
     role?: string;
     city?: string;
+    experience?: string;
     posted_at: string | null;
     created_at: string;
   is_saved?: boolean;
@@ -197,6 +198,7 @@ export interface JobFacetGroup {
   roles: FacetOption[];
   locations: FacetOption[];
   categories: FacetOption[];
+  experience: FacetOption[];
 }
 
 export interface JobFacets {

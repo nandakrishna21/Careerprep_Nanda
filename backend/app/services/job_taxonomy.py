@@ -455,6 +455,85 @@ def role_label(slug: str | None) -> str:
 
 
 # --------------------------------------------------------------------------
+# Experience (years of experience required)
+# --------------------------------------------------------------------------
+
+_EXP_RANGE = re.compile(r"(\d+)\s*(?:-|to|\u2013)\s*(\d+)\s*(?:yrs?|years?)", re.IGNORECASE)
+_EXP_PLUS = re.compile(r"(\d+)\s*\+\s*(?:yrs?|years?)", re.IGNORECASE)
+_EXP_MINIMUM = re.compile(r"(\d+)\s*(?:yrs?|years?)\s+(?:of\s+)?experience", re.IGNORECASE)
+_EXP_MINIMUM2 = re.compile(r"experience\s*(?:of\s+|:)?\s*(\d+)\s*(?:yrs?|years?)?", re.IGNORECASE)
+
+# Experience filter: fixed year options meaning "suitable for someone with N
+# years" (job's minimum required years <= N). Fresher is N = 0.
+EXPERIENCE_YEARS_MAX = 10
+
+
+def experience_options(exp_mins: Iterable[int | None]) -> list[dict]:
+    """Year options with counts, capped by the highest minimum present."""
+    present = [value for value in exp_mins if value is not None]
+    if not present:
+        return []
+    top = min(EXPERIENCE_YEARS_MAX, max(present))
+    options = []
+    for year in range(top + 1):
+        count = sum(1 for value in present if value <= year)
+        label = "Fresher" if year == 0 else ("1 year" if year == 1 else f"{year} years")
+        options.append({"value": str(year), "label": label, "count": count})
+    return options
+
+
+def _parse_exp_numbers(text: str) -> tuple[int | None, int | None]:
+    """Explicit year figures only - seniority words alone never guess a number."""
+    cleaned = text.replace("+", " + ")
+    match = _EXP_RANGE.search(cleaned)
+    if match:
+        lo, hi = int(match.group(1)), int(match.group(2))
+        if lo > 30 or hi > 30:
+            return None, None
+        return (min(lo, hi), max(lo, hi))
+    match = _EXP_PLUS.search(cleaned)
+    if match:
+        lo = int(match.group(1))
+        return (lo, None) if lo <= 30 else (None, None)
+    for pattern in (_EXP_MINIMUM, _EXP_MINIMUM2):
+        match = pattern.search(cleaned)
+        if match:
+            lo = int(match.group(1))
+            return (lo, None) if lo <= 30 else (None, None)
+    return None, None
+
+
+def classify_experience(
+    title: str | None, description: str | None = None, hint: str | None = None
+) -> tuple[int | None, int | None]:
+    """Return ``(exp_min, exp_max)`` years required, or ``(None, None)``."""
+    title_text = (title or "").strip()
+    lowered_title = title_text.lower()
+    if re.search(r"\bfresher|\bintern", lowered_title):
+        return 0, 0
+    for blob in (hint or "", title_text, description or ""):
+        if not blob:
+            continue
+        lo, hi = _parse_exp_numbers(blob)
+        if lo is not None:
+            return lo, hi
+    lowered_desc = (description or "").lower()
+    if re.search(r"\bfreshers?\b", lowered_desc):
+        return 0, 0
+    return None, None
+
+
+def experience_label(exp_min: int | None, exp_max: int | None) -> str:
+    if exp_min is None:
+        return ""
+    if exp_max is None:
+        return "Fresher" if exp_min <= 0 else f"{exp_min}+ yrs"
+    if exp_min == exp_max:
+        return "Fresher" if exp_min <= 0 else f"{exp_min} yrs"
+    return f"{exp_min}-{exp_max} yrs"
+
+
+# --------------------------------------------------------------------------
 # Location normalisation
 # --------------------------------------------------------------------------
 
@@ -621,7 +700,7 @@ def classify_job(title: str, job_type: str, location: str) -> tuple[str, str]:
 # Schema upkeep (the project has no alembic history yet)
 # --------------------------------------------------------------------------
 
-_JOB_COLUMNS = {"role": "VARCHAR(64)", "city": "VARCHAR(120)"}
+_JOB_COLUMNS = {"role": "VARCHAR(64)", "city": "VARCHAR(120)", "exp_min": "INTEGER", "exp_max": "INTEGER"}
 
 
 def ensure_job_columns(engine) -> None:
@@ -640,7 +719,7 @@ def ensure_job_columns(engine) -> None:
 
 
 def backfill_jobs(engine) -> int:
-    """Derive ``role``/``city`` for rows written before these columns existed."""
+    """Derive ``role``/``city``/experience for rows written before these columns existed."""
     from sqlalchemy import or_, select
     from sqlalchemy.orm import sessionmaker
 
@@ -651,10 +730,15 @@ def backfill_jobs(engine) -> int:
     db = sessionmaker(bind=engine)()
     try:
         rows = db.scalars(
-            select(Job).where(or_(Job.role.is_(None), Job.city.is_(None)))
+            select(Job).where(
+                or_(Job.role.is_(None), Job.city.is_(None), Job.exp_min.is_(None))
+            )
         ).all()
         for row in rows:
-            row.role, row.city = classify_job(row.title, row.type, row.location)
+            if row.role is None or row.city is None:
+                row.role, row.city = classify_job(row.title, row.type, row.location)
+            if row.exp_min is None:
+                row.exp_min, row.exp_max = classify_experience(row.title, row.description)
         db.commit()
         return len(rows)
     finally:

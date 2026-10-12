@@ -82,6 +82,7 @@ export default function Jobs() {
   const [category, setCategory] = useState('');
   const [role, setRole] = useState('');
   const [location, setLocation] = useState('');
+  const [experience, setExperience] = useState('');
   const [draft, setDraft] = useState('');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
@@ -152,7 +153,8 @@ export default function Jobs() {
   const categoryOptions = (group?.categories ?? []).map((option) => option.value);
   const roleOptions = group?.roles ?? [];
   const locationOptions = group?.locations ?? [];
-  const hasFilters = Boolean(category || role || location);
+  const experienceOptions = group?.experience ?? [];
+  const hasFilters = Boolean(category || role || location || experience !== '');
 
   useEffect(() => {
     let alive = true;
@@ -179,6 +181,7 @@ export default function Jobs() {
           }
           if (role) params.role = role;
           if (location) params.location = location;
+          if (experience !== '') params.experience = Number(experience);
           if (q.trim()) params.q = q.trim();
           const res = await get<Paged<Job>>('/jobs', params);
           if (!alive) return;
@@ -199,13 +202,14 @@ export default function Jobs() {
     return () => {
       alive = false;
     };
-  }, [tab, category, role, location, q, page, refreshKey]);
+  }, [tab, category, role, location, experience, q, page, refreshKey]);
 
   const switchTab = (next: Tab) => {
     setTab(next);
     setCategory('');
     setRole('');
     setLocation('');
+    setExperience('');
     setPage(1);
   };
 
@@ -213,6 +217,7 @@ export default function Jobs() {
     setCategory('');
     setRole('');
     setLocation('');
+    setExperience('');
     setPage(1);
   };
 
@@ -350,7 +355,10 @@ export default function Jobs() {
       )}
 
       {tab !== 'saved' &&
-        (categoryOptions.length > 0 || roleOptions.length > 0 || locationOptions.length > 0) && (
+        (categoryOptions.length > 0 ||
+          roleOptions.length > 0 ||
+          locationOptions.length > 0 ||
+          experienceOptions.length > 0) && (
           <div className="flex flex-wrap items-center gap-3">
             {tab !== 'remote' && categoryOptions.length > 0 && (
               <div className="w-full sm:w-48">
@@ -404,6 +412,26 @@ export default function Jobs() {
                 >
                   <option value="">All locations</option>
                   {locationOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label} ({option.count})
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+
+            {experienceOptions.length > 0 && (
+              <div className="w-full sm:w-48">
+                <Select
+                  value={experience}
+                  onChange={(e) => {
+                    setExperience(e.target.value);
+                    setPage(1);
+                  }}
+                  aria-label="Experience"
+                >
+                  <option value="">All experience</option>
+                  {experienceOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label} ({option.count})
                     </option>
@@ -470,6 +498,7 @@ export default function Jobs() {
                   </Badge>
                   <Badge color="slate">{titleCase(job.category)}</Badge>
                   {job.role && <Badge color="brand">{job.role}</Badge>}
+                  {job.experience && <Badge color="slate">{job.experience}</Badge>}
                   {tab === 'remote' && job.source && REMOTE_SOURCE_LABELS[job.source] && (
                     <Badge color="green">via {REMOTE_SOURCE_LABELS[job.source]}</Badge>
                   )}

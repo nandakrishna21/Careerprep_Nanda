@@ -12,7 +12,11 @@ from app.core.security import CurrentUser, DbSession
 from app.models import Job, SavedJob, User
 from app.schemas.misc import SaveJobRequest
 from app.services.common import job_brief
-from app.services.job_taxonomy import locations_with_counts, roles_with_counts
+from app.services.job_taxonomy import (
+    experience_options,
+    locations_with_counts,
+    roles_with_counts,
+)
 from app.services.job_sync import (
     MANUAL_REMOTE_COOLDOWN_SECONDS,
     REMOTE_SITES,
@@ -89,6 +93,7 @@ def _applied_filters(
     category: str | None,
     role: str | None,
     location: str | None,
+    experience: int | None,
     q: str | None,
 ):
     if type:
@@ -99,6 +104,8 @@ def _applied_filters(
         stmt = stmt.where(Job.role == role)
     if location:
         stmt = stmt.where(Job.city == location)
+    if experience is not None:
+        stmt = stmt.where(Job.exp_min <= experience)
     if q:
         needle = q.lower()
         stmt = stmt.where(
@@ -119,13 +126,14 @@ def list_jobs(
     category: str | None = None,
     role: str | None = None,
     location: str | None = None,
+    experience: int | None = None,
     q: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
     page, page_size, offset = _paginate(page, page_size)
     stmt = select(Job).where(Job.is_published.is_(True))
-    stmt = _applied_filters(stmt, type, category, role, location, q)
+    stmt = _applied_filters(stmt, type, category, role, location, experience, q)
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = db.scalars(
         stmt.order_by(
@@ -147,16 +155,17 @@ def list_jobs(
 
 
 def _facet_counts(db: Session, type: str | None = None, category: str | None = None) -> dict:
-    stmt = select(Job.role, Job.city, Job.category).where(Job.is_published.is_(True))
+    stmt = select(Job.role, Job.city, Job.category, Job.exp_min).where(Job.is_published.is_(True))
     if type:
         stmt = stmt.where(Job.type == type)
     if category:
         stmt = stmt.where(Job.category == category)
     rows = db.execute(stmt).all()
     return {
-        "roles": roles_with_counts(role for role, _city, _category in rows),
-        "locations": locations_with_counts(city for _role, city, _category in rows),
-        "categories": _counted(category for _role, _city, category in rows),
+        "roles": roles_with_counts(role for role, _city, _category, _exp in rows),
+        "locations": locations_with_counts(city for _role, city, _category, _exp in rows),
+        "categories": _counted(category for _role, _city, category, _exp in rows),
+        "experience": experience_options(exp for _role, _city, _category, exp in rows),
     }
 
 

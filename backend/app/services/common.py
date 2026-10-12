@@ -6,7 +6,7 @@ from datetime import date, datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.services.job_taxonomy import role_label
+from app.services.job_taxonomy import experience_label, role_label
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
@@ -91,6 +91,7 @@ def job_brief(job) -> dict:
         "source": job.source or "",
         "role": role_label(job.role) if job.role else "",
         "city": job.city or "",
+        "experience": experience_label(job.exp_min, job.exp_max),
         "posted_at": job.posted_at,
         "created_at": job.created_at,
     }

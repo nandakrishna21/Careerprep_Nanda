@@ -311,6 +311,8 @@ class Job(Base):
     synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     role: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     city: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    exp_min: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    exp_max: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     is_published: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -320,9 +322,11 @@ class Job(Base):
 def _classify_job(mapper, connection, target: Job) -> None:
     """Keep the filter dimensions in step with the title/location no matter how the
     row was written (crawler, admin form or seed)."""
-    from app.services.job_taxonomy import classify_job
+    from app.services.job_taxonomy import classify_experience, classify_job
 
     target.role, target.city = classify_job(target.title, target.type, target.location)
+    if target.exp_min is None:
+        target.exp_min, target.exp_max = classify_experience(target.title, target.description)
 
 
 class SavedJob(Base):

@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import Job
 from app.services.common import naive_utc_now
+from app.services.job_taxonomy import classify_experience
 
 APIFY_BASE = "https://api.apify.com/v2"
 _ACTIVE_STATUSES = ("READY", "RUNNING")
@@ -420,6 +421,7 @@ def _map_naukri(item: dict) -> dict | None:
     experience = _text(item.get("experience"), 120)
     location = _text(item.get("location"), 255)
     remote = _is_remote(location)
+    exp_min, exp_max = classify_experience(title, item.get("description"), experience)
     description = _plain_text(item.get("description"))
     skills = item.get("skills")
     if not description and isinstance(skills, list):
@@ -440,6 +442,8 @@ def _map_naukri(item: dict) -> dict | None:
         "source": "naukri",
         "external_id": job_id or link,
         "posted_at": parse_date(item.get("createdDate")) or _relative_date(item.get("postedLabel")),
+        "exp_min": exp_min,
+        "exp_max": exp_max,
     }
 
 
@@ -453,6 +457,7 @@ def _map_glassdoor(item: dict) -> dict | None:
         location_raw.get("raw") if isinstance(location_raw, dict) else location_raw, 255
     )
     remote = _is_remote(item.get("is_remote"), item.get("work_mode"), location)
+    exp_min, exp_max = classify_experience(title, item.get("description"), item.get("experience_range"))
     salary_lo = item.get("salary_minimum")
     salary_hi = item.get("salary_maximum")
     salary = ""
@@ -475,6 +480,8 @@ def _map_glassdoor(item: dict) -> dict | None:
         "source": "glassdoor",
         "external_id": link,
         "posted_at": parse_date(item.get("posted_date")),
+        "exp_min": exp_min,
+        "exp_max": exp_max,
     }
 
 
