@@ -62,6 +62,8 @@ def _ensure_admin(db: Session) -> None:
         full_name="Administrator",
         role="admin",
         is_active=True,
+        is_verified=True,
+        is_approved=True,
     )
     db.add(admin)
     db.flush()
@@ -77,10 +79,11 @@ def _ensure_demo_student(db: Session) -> User:
         email=spec["email"],
         hashed_password=hash_password(spec["password"]),
         full_name=spec["full_name"],
-        role="student",
-        is_active=True,
-        is_verified=True,
-    )
+          role="student",
+          is_active=True,
+          is_verified=True,
+          is_approved=True,
+      )
     db.add(user)
     db.flush()
     db.add(

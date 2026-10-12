@@ -8,7 +8,7 @@ import { useAuth } from '../../stores/auth';
 
 const RESEND_WAIT_SECONDS = 60;
 
-type Status = 'verifying' | 'done' | 'error' | 'idle';
+type Status = 'verifying' | 'done' | 'pending' | 'error' | 'idle';
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -33,10 +33,14 @@ export default function VerifyEmail() {
     attempted.current = true;
     (async () => {
       try {
-        await verifyEmailToken(token);
-        setStatus('done');
-        toast.success('Email verified - welcome aboard!');
-        setTimeout(() => navigate('/dashboard', { replace: true }), 1200);
+        const result = await verifyEmailToken(token);
+        if (result.approved) {
+          setStatus('done');
+          toast.success('Email verified - welcome aboard!');
+          setTimeout(() => navigate('/dashboard', { replace: true }), 1200);
+        } else {
+          setStatus('pending');
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Verification failed.';
         if (message.toLowerCase().includes('already verified')) {
@@ -96,6 +100,23 @@ export default function VerifyEmail() {
           <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           <p className="font-bold text-slate-900 dark:text-white">Email verified!</p>
           <p className="text-sm text-slate-500 dark:text-slate-400">Taking you to your dashboard…</p>
+        </div>
+      )}
+
+      {status === 'pending' && (
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
+          <MailOpen className="h-12 w-12 text-amber-500" />
+          <p className="font-bold text-slate-900 dark:text-white">Almost there!</p>
+          <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
+            Your email is verified. Your account is now awaiting approval by the super admin —
+            you will be able to log in as soon as it is accepted.
+          </p>
+          <Link
+            to="/login"
+            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+          >
+            Back to sign in
+          </Link>
         </div>
       )}
 

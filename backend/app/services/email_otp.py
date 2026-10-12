@@ -54,24 +54,29 @@ def _as_naive(value: datetime) -> datetime:
 
 
 def ensure_user_columns(engine: Engine) -> int:
-    """Add ``users.is_verified`` to databases created before this feature.
-
-    Existing accounts predate verification, so they are grandfathered as
-    verified instead of being locked out. Returns rows backfilled.
+    """Add ``users.is_verified`` / ``users.is_approved`` to databases created
+    before these features, grandfathering pre-existing accounts as verified
+    and approved instead of locking them out. Returns rows backfilled.
     """
     from sqlalchemy import inspect, text
 
     columns = {column["name"] for column in inspect(engine).get_columns("users")}
     backfilled = 0
     with engine.begin() as connection:
-        if "is_verified" not in columns:
-            connection.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE"))
-            # The column is brand new, so every row predates verification.
-            backfilled = connection.execute(text("UPDATE users SET is_verified = TRUE")).rowcount or 0
-        else:
-            backfilled = connection.execute(
-                text("UPDATE users SET is_verified = TRUE WHERE is_verified IS NULL")
-            ).rowcount or 0
+        for column in ("is_verified", "is_approved"):
+            if column not in columns:
+                connection.execute(
+                    text(f"ALTER TABLE users ADD COLUMN {column} BOOLEAN DEFAULT FALSE")
+                )
+                # The column is brand new, so every row predates the feature.
+                backfilled += connection.execute(
+                    text(f"UPDATE users SET {column} = TRUE")
+                ).rowcount or 0
+        if not backfilled:
+            for column in ("is_verified", "is_approved"):
+                backfilled += connection.execute(
+                    text(f"UPDATE users SET {column} = TRUE WHERE {column} IS NULL")
+                ).rowcount or 0
     return backfilled
 
 

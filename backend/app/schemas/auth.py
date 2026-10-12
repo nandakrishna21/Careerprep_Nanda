@@ -38,6 +38,14 @@ class VerifyEmailRequest(BaseModel):
     token: str = Field(min_length=10, max_length=200)
 
 
+class VerifyEmailResponse(BaseModel):
+    approved: bool
+    access_token: str | None = None
+    token_type: str = "bearer"
+    user: UserOut | None = None
+    message: str = ""
+
+
 class ResendOtpRequest(BaseModel):
     email: EmailStr
 

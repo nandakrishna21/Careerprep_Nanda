@@ -149,20 +149,61 @@ def db():
     session.close()
 
 
-@pytest.fixture(scope="session")
-def auth_headers(client):
-    email = "quiz.runner@example.com"
+def _owner_headers(client):
+    """Log in as the superadmin, registering first if needed (auto-approved)."""
+    from app.core.config import settings
+
+    email = settings.superadmin_email
     reg = client.post(
         "/api/auth/register",
-        json={
-            "full_name": "Quiz Runner",
-            "email": email,
-            "password": "Password123",
-        },
+        json={"full_name": "Owner", "email": email, "password": "Secret123"},
     )
-    assert reg.status_code == 200, reg.text
-    dev_token = reg.json().get("dev_token")
-    assert dev_token, "expected dev-mode token in register response"
-    token = client.post("/api/auth/verify-email", json={"token": dev_token})
-    assert token.status_code == 200, token.text
-    return {"Authorization": f"Bearer {token.json()['access_token']}"}
+    if reg.status_code == 200:
+        verify = client.post(
+            "/api/auth/verify-email", json={"token": reg.json()["dev_token"]}
+        )
+        assert verify.status_code == 200, verify.text
+        assert verify.json()["approved"] is True
+        return {"Authorization": f"Bearer {verify.json()['access_token']}"}
+    assert reg.status_code == 409, reg.text
+    login = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
+    assert login.status_code == 200, login.text
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
+def approve_user(client, owner_headers, user_id):
+    res = client.patch(
+        f"/api/admin/users/{user_id}", json={"is_approved": True}, headers=owner_headers
+    )
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+def signup_approve_login(client, email, name="Approved User", password="Secret123"):
+    """Full signup funnel: register, verify (pending), approve, log in."""
+    owner = _owner_headers(client)
+    reg = client.post(
+        "/api/auth/register",
+        json={"full_name": name, "email": email, "password": password},
+    )
+    if reg.status_code == 200:
+        body = reg.json()
+        verify = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
+        assert verify.status_code == 200, verify.text
+        assert verify.json()["approved"] is False
+        approve_user(client, owner, body["user_id"])
+    else:
+        assert reg.status_code == 409, reg.text
+    login = client.post("/api/auth/login", json={"email": email, "password": password})
+    assert login.status_code == 200, login.text
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
+@pytest.fixture(scope="session")
+def owner_headers(client):
+    return _owner_headers(client)
+
+
+@pytest.fixture(scope="session")
+def auth_headers(client):
+    return signup_approve_login(client, "quiz.runner@example.com", "Quiz Runner", "Password123")

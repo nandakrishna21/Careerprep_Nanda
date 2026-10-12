@@ -1,4 +1,5 @@
 from app.core.config import settings
+from conftest import _owner_headers, approve_user
 
 
 def test_health(client):
@@ -21,26 +22,29 @@ def test_register_me_login_flow(client):
     dev_token = body.get("dev_token")
     assert dev_token, "expected dev-mode token in register response"
 
-    # Login is blocked until the email is verified.
-    blocked = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
-    assert blocked.status_code == 403
-
+    # Email verification alone is not enough: the account awaits approval.
     verify = client.post("/api/auth/verify-email", json={"token": dev_token})
     assert verify.status_code == 200, verify.text
-    verified = verify.json()
-    assert verified["access_token"]
-    assert verified["user"]["email"] == email
-    assert verified["user"]["role"] == "student"
+    assert verify.json()["approved"] is False
+    assert "access_token" not in verify.json()
 
-    headers = {"Authorization": f"Bearer {verified['access_token']}"}
-    me = client.get("/api/auth/me", headers=headers)
-    assert me.status_code == 200
-    assert me.json()["user"]["email"] == email
-    assert "profile" in me.json()
+    pending = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
+    assert pending.status_code == 403
+    assert "pending approval" in pending.json()["detail"].lower()
+
+    # Superadmin accepts -> login works.
+    owner = _owner_headers(client)
+    approve_user(client, owner, body["user_id"])
 
     login = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
     assert login.status_code == 200
     assert login.json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    me = client.get("/api/auth/me", headers=headers)
+    assert me.status_code == 200
+    assert me.json()["user"]["email"] == email
+    assert "profile" in me.json()
 
 
 def test_duplicate_email_conflict(client):
@@ -70,16 +74,10 @@ def test_short_password_rejected(client):
 
 
 def test_forgot_and_reset_password(client):
+    from conftest import signup_approve_login
+
     email = "reset.user@example.com"
-    reg = client.post(
-        "/api/auth/register",
-        json={"full_name": "Reset", "email": email, "password": "Secret123"},
-    )
-    assert reg.status_code == 200
-    verify = client.post(
-        "/api/auth/verify-email", json={"token": reg.json()["dev_token"]}
-    )
-    assert verify.status_code == 200
+    signup_approve_login(client, email, "Reset")
     res = client.post("/api/auth/forgot-password", json={"email": email})
     assert res.status_code == 200
     token = res.json().get("reset_token")
@@ -110,6 +108,66 @@ def test_admin_seeded_from_settings(client):
     )
     assert res.status_code == 200
     assert res.json()["user"]["role"] == "admin"
+
+
+def test_admin_cannot_approve_accounts(client):
+    from conftest import signup_approve_login
+
+    email = "approve.gated@example.com"
+    owner = _owner_headers(client)
+    reg = client.post(
+        "/api/auth/register",
+        json={"full_name": "Gated", "email": email, "password": "Secret123"},
+    )
+    assert reg.status_code == 200
+    user_id = reg.json()["user_id"]
+    client.post("/api/auth/verify-email", json={"token": reg.json()["dev_token"]})
+
+    admin_login = client.post(
+        "/api/auth/login",
+        json={"email": settings.admin_email, "password": settings.admin_password},
+    )
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+    res = client.patch(
+        f"/api/admin/users/{user_id}", json={"is_approved": True}, headers=admin_headers
+    )
+    assert res.status_code == 403
+
+    approve_user(client, owner, user_id)
+    login = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
+    assert login.status_code == 200
+
+
+def test_approval_notifies_user_once(client, db):
+    from sqlalchemy import func, select
+
+    from app.models import Notification
+
+    email = "notify.me@example.com"
+    owner = _owner_headers(client)
+    reg = client.post(
+        "/api/auth/register",
+        json={"full_name": "Notify Me", "email": email, "password": "Secret123"},
+    )
+    user_id = reg.json()["user_id"]
+    client.post("/api/auth/verify-email", json={"token": reg.json()["dev_token"]})
+
+    approve_user(client, owner, user_id)
+    notes = db.scalars(
+        select(Notification).where(
+            Notification.user_id == user_id, Notification.type == "account_approved"
+        )
+    ).all()
+    assert len(notes) == 1
+
+    # Approving again is idempotent: no duplicate notification.
+    approve_user(client, owner, user_id)
+    count = db.scalar(
+        select(func.count(Notification.id)).where(
+            Notification.user_id == user_id, Notification.type == "account_approved"
+        )
+    )
+    assert count == 1
 
 
 def _register(client, email, name="OTP User"):

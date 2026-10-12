@@ -4,17 +4,19 @@ from app.core.config import settings
 
 
 def _register_verify(client, email, name="Test User"):
+    from conftest import _owner_headers, approve_user
+
     reg = client.post(
         "/api/auth/register",
         json={"full_name": name, "email": email, "password": "Secret123"},
     )
     if reg.status_code == 200:
-        verify = client.post(
-            "/api/auth/verify-email", json={"token": reg.json()["dev_token"]}
-        )
+        body = reg.json()
+        verify = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
         assert verify.status_code == 200, verify.text
-        return verify.json()["access_token"]
-    assert reg.status_code == 409, reg.text  # already registered by an earlier test
+        approve_user(client, _owner_headers(client), body["user_id"])
+    else:
+        assert reg.status_code == 409, reg.text  # already registered by an earlier test
     login = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
     assert login.status_code == 200, login.text
     return login.json()["access_token"]

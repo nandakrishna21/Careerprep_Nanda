@@ -52,6 +52,7 @@ async def lifespan(_: FastAPI):
                 role="admin",
                 is_active=True,
                 is_verified=True,
+                is_approved=True,
             )
             db.add(admin_user)
             db.flush()
@@ -63,6 +64,7 @@ async def lifespan(_: FastAPI):
                 owner.role = "superadmin"
                 owner.is_active = True
                 owner.is_verified = True
+                owner.is_approved = True
         db.commit()
         achievements.ensure_defaults(db)
     finally:

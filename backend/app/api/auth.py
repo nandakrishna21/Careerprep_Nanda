@@ -25,6 +25,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TokenResponse,
     VerifyEmailRequest,
+    VerifyEmailResponse,
 )
 from app.services.common import profile_brief, user_brief
 from app.services.email_otp import (
@@ -88,16 +89,18 @@ def _send_reset_email(user: User, token: str) -> None:
 def register(payload: RegisterRequest, db: DbSession) -> dict:
     if _find_user_by_email(db, str(payload.email)) is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    is_owner = (
+        str(payload.email).strip().lower() == settings.superadmin_email.strip().lower()
+        and bool(settings.superadmin_email.strip())
+    )
     user = User(
         email=str(payload.email).strip().lower(),
         hashed_password=hash_password(payload.password),
         full_name=payload.full_name.strip(),
-        role="superadmin"
-        if str(payload.email).strip().lower() == settings.superadmin_email.strip().lower()
-        and settings.superadmin_email.strip()
-        else "student",
+        role="superadmin" if is_owner else "student",
         is_active=True,
         is_verified=False,
+        is_approved=is_owner,
     )
     db.add(user)
     db.flush()
@@ -115,7 +118,7 @@ def register(payload: RegisterRequest, db: DbSession) -> dict:
             Notification(
                 user_id=owner.id,
                 title="New user signed up",
-                body=f"{user.full_name} ({user.email}) just created an account.",
+                body=f"{user.full_name} ({user.email}) just created an account and is awaiting approval.",
                 type="user_signup",
             )
         )
@@ -127,13 +130,18 @@ def register(payload: RegisterRequest, db: DbSession) -> dict:
     return response
 
 
-@router.post("/verify-email", response_model=TokenResponse)
+@router.post("/verify-email", response_model=VerifyEmailResponse, response_model_exclude_none=True)
 def verify_email(payload: VerifyEmailRequest, db: DbSession) -> dict:
     try:
         user = consume_verify_token(db, payload.token)
     except OtpError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return _issue_token(user)
+    if not user.is_approved:
+        return {
+            "approved": False,
+            "message": "Email verified - your account is now awaiting approval by the super admin.",
+        }
+    return {"approved": True, **_issue_token(user)}
 
 
 @router.post("/resend-otp", response_model=ResendOtpResponse, response_model_exclude_none=True)
@@ -166,6 +174,11 @@ def login(payload: LoginRequest, db: DbSession) -> dict:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Please verify your email first - click the verification link we sent you.",
+        )
+    if not user.is_approved:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is pending approval by the super admin.",
         )
     return _issue_token(user)
 

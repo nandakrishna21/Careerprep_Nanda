@@ -241,6 +241,7 @@ def admin_list_users(
             {
                 **user_brief(row),
                 "is_active": row.is_active,
+                "is_approved": row.is_approved,
                 "created_at": row.created_at,
                 "profile": {
                     "xp": profile.xp if profile else 0,
@@ -270,6 +271,11 @@ def admin_update_user(id: int, payload: AdminUserUpdate, admin: AdminUser, db: D
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only a super admin can grant the super admin role",
         )
+    if "is_approved" in data and admin.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only a super admin can approve accounts",
+        )
     if target.id == admin.id:
         if "role" in data and data["role"] != admin.role:
             raise HTTPException(
@@ -281,9 +287,26 @@ def admin_update_user(id: int, payload: AdminUserUpdate, admin: AdminUser, db: D
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="You cannot deactivate your own account",
             )
+        if "is_approved" in data and bool(data["is_approved"]) is not bool(admin.is_approved):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You cannot change your own approval",
+            )
+    was_approved = bool(target.is_approved)
     for field, value in data.items():
         setattr(target, field, value)
+    approved_now = bool(data.get("is_approved")) and not was_approved
     db.commit()
+    if approved_now:
+        db.add(
+            Notification(
+                user_id=target.id,
+                title="Account approved",
+                body="Your account has been approved - you can now log in.",
+                type="account_approved",
+            )
+        )
+        db.commit()
     db.refresh(target)
     profile = db.scalar(select(Profile).where(Profile.user_id == target.id))
     return {**user_brief(target), "is_active": target.is_active, "profile": profile_brief(profile)}

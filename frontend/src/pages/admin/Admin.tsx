@@ -114,6 +114,7 @@ interface AdminUser {
   email: string;
   role: string;
   is_active: boolean;
+  is_approved: boolean;
   created_at: string;
   profile?: { xp?: number; level?: number } | null;
 }
@@ -2488,7 +2489,7 @@ function UsersPanel() {
     return () => window.clearTimeout(timer);
   }, [q]);
 
-  const patch = async (target: AdminUser, payload: { role?: string; is_active?: boolean }) => {
+  const patch = async (target: AdminUser, payload: { role?: string; is_active?: boolean; is_approved?: boolean }) => {
     setBusyId(target.id);
     try {
       await api.patch(`/admin/users/${target.id}`, payload);
@@ -2544,6 +2545,7 @@ function UsersPanel() {
                 <th className="px-4 py-3 font-semibold">XP</th>
                 <th className="px-4 py-3 font-semibold">Level</th>
                 <th className="px-4 py-3 font-semibold">Joined</th>
+                <th className="px-4 py-3 font-semibold">Approved</th>
                 <th className="px-4 py-3 font-semibold">Active</th>
                 <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
@@ -2579,6 +2581,33 @@ function UsersPanel() {
                     </td>
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.profile?.level ?? 1}</td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{formatDate(u.created_at)}</td>
+                    <td className="px-4 py-3">
+                      {user?.role === 'superadmin' ? (
+                        <button
+                          type="button"
+                          disabled={isSelf || busyId === u.id}
+                          onClick={() => void patch(u, { is_approved: !u.is_approved })}
+                          title={isSelf ? 'You cannot change your own approval' : undefined}
+                          className={`rounded-full px-2.5 py-1 text-xs font-bold transition disabled:opacity-60 ${
+                            u.is_approved
+                              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300'
+                              : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300'
+                          }`}
+                        >
+                          {u.is_approved ? 'approved' : 'pending'}
+                        </button>
+                      ) : (
+                        <span
+                          className={`inline-block rounded-full px-2.5 py-1 text-xs font-bold ${
+                            u.is_approved
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                          }`}
+                        >
+                          {u.is_approved ? 'approved' : 'pending'}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <button
                         type="button"

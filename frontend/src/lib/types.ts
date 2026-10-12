@@ -4,6 +4,7 @@ export interface User {
   email: string;
   role: 'student' | 'admin' | 'superadmin';
   is_active?: boolean;
+  is_approved?: boolean;
   created_at?: string;
 }
 
@@ -38,6 +39,14 @@ export interface RegisterResponse {
 export interface ResendOtpResponse {
   message: string;
   dev_token?: string;
+}
+
+export interface VerifyEmailResponse {
+  approved: boolean;
+  access_token?: string;
+  token_type: string;
+  user?: User;
+  message?: string;
 }
 export interface Topic {
   id: number;

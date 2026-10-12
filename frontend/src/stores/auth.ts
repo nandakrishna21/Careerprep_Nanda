@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { get as apiGet, post as apiPost, errorMessage } from '../lib/api';
-import type { AuthResponse, Profile, RegisterResponse, ResendOtpResponse, User } from '../lib/types';
+import type { AuthResponse, Profile, RegisterResponse, ResendOtpResponse, User, VerifyEmailResponse } from '../lib/types';
 
 interface AuthState {
   token: string | null;
@@ -11,7 +11,7 @@ interface AuthState {
   hydrate: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<RegisterResponse>;
-  verifyEmailToken: (token: string) => Promise<void>;
+  verifyEmailToken: (token: string) => Promise<{ approved: boolean }>;
   resendOtp: (email: string) => Promise<ResendOtpResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
@@ -63,9 +63,12 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   verifyEmailToken: async (token) => {
     try {
-      const data = await apiPost<AuthResponse>('/auth/verify-email', { token });
-      get().setSession(data.access_token, data.user);
-      await get().hydrate();
+      const data = await apiPost<VerifyEmailResponse>('/auth/verify-email', { token });
+      if (data.access_token && data.user) {
+        get().setSession(data.access_token, data.user);
+        await get().hydrate();
+      }
+      return { approved: data.approved };
     } catch (err) {
       throw new Error(errorMessage(err));
     }
