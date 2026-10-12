@@ -170,11 +170,12 @@ export interface Job {
   location: string;
   salary: string;
   apply_link: string;
-  deadline: string | null;
-  source: string;
-  role?: string;
-  city?: string;
-  created_at: string;
+    deadline: string | null;
+    source: string;
+    role?: string;
+    city?: string;
+    posted_at: string | null;
+    created_at: string;
   is_saved?: boolean;
   save_status?: string;
 }

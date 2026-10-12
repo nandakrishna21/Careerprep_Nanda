@@ -5,6 +5,7 @@ import {
   BookmarkCheck,
   Building2,
   CalendarClock,
+  CalendarDays,
   ExternalLink,
   Globe,
   MapPin,
@@ -15,7 +16,7 @@ import {
 import api, { errorMessage, get, post, del } from '../../lib/api';
 import type { Job, JobFacets, Paged, RemoteSite } from '../../lib/types';
 import { Badge, Button, Card, EmptyState, Select, Spinner } from '../../components/ui';
-import { titleCase } from '../../components/helpers';
+import { postedAgo, titleCase } from '../../components/helpers';
 
 type Tab = 'all' | 'government' | 'it' | 'remote' | 'saved';
 
@@ -475,12 +476,17 @@ export default function Jobs() {
                   {job.is_saved && <Badge color="green">{titleCase(job.save_status ?? 'saved')}</Badge>}
                 </div>
 
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                  {job.location && (
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" /> {job.location}
-                    </span>
-                  )}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                    {job.location && (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" /> {job.location}
+                      </span>
+                    )}
+                    {job.posted_at && postedAgo(job.posted_at) && (
+                      <span className="inline-flex items-center gap-1" title={`Posted ${job.posted_at.slice(0, 10)}`}>
+                        <CalendarDays className="h-3.5 w-3.5" /> Posted {postedAgo(job.posted_at)}
+                      </span>
+                    )}
                   {job.salary && (
                     <span className="inline-flex items-center gap-1">
                       <Wallet className="h-3.5 w-3.5" /> {job.salary}

@@ -23,14 +23,28 @@ export function toItems<T>(data: unknown): T[] {
 }
 
 export function formatDate(value?: string | null): string {
-  if (!value) return 'â€”';
+  if (!value) return '—';
   const dateOnly = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
   const d = dateOnly
     ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
     : new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  export function postedAgo(value?: string | null): string | null {
+    if (!value) return null;
+    const dateOnly = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    const then = dateOnly
+      ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])).getTime()
+      : new Date(value).getTime();
+    if (Number.isNaN(then)) return null;
+    const days = Math.floor((Date.now() - then) / 86400000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 30) return `${days}d ago`;
+    return formatDate(value);
+  }
 
 export function formatClock(seconds: number): string {
   const safe = Math.max(0, Math.floor(seconds));
@@ -42,7 +56,7 @@ export function formatClock(seconds: number): string {
 }
 
 export function formatDurationLabel(minutes?: number | null): string {
-  if (minutes === null || minutes === undefined) return 'â€”';
+  if (minutes === null || minutes === undefined) return '—';
   if (minutes < 60) return `${minutes} min`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

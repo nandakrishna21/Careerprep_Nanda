@@ -20,7 +20,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
 
@@ -157,6 +157,27 @@ def parse_date(value: Any) -> date | None:
             except ValueError:
                 continue
     return None
+
+
+_RELATIVE_AGE = re.compile(r"(\d+)\s*(minute|hour|day|week|month|year)s?", re.IGNORECASE)
+_AGE_IN_DAYS = {"minute": 0, "hour": 0, "day": 1, "week": 7, "month": 30, "year": 365}
+
+
+def _relative_date(value: Any) -> date | None:
+    """Parse human ages like ``6 Days Ago`` or ``30+ Days Ago`` (Naukri labels)."""
+    text = _text(value, 60).lower().replace("+", "")
+    if not text:
+        return None
+    if text in ("just now", "today"):
+        return naive_utc_now().date()
+    if text == "yesterday":
+        return naive_utc_now().date() - timedelta(days=1)
+    match = _RELATIVE_AGE.search(text)
+    if not match:
+        return None
+    amount = int(match.group(1))
+    unit = match.group(2).lower()
+    return naive_utc_now().date() - timedelta(days=amount * _AGE_IN_DAYS[unit])
 
 
 # --------------------------------------------------------------------------
@@ -387,6 +408,73 @@ def _map_indeed(item: dict) -> dict | None:
         "source": "indeed",
         "external_id": job_id or apply_link,
         "posted_at": parse_date(item.get("pubDate")),
+    }
+
+
+def _map_naukri(item: dict) -> dict | None:
+    title = _text(item.get("title") or item.get("jobTitle"), 300)
+    link = _text(item.get("url") or item.get("jobUrl") or item.get("applyUrl"), 1000)
+    job_id = _text(item.get("jobId"), 120)
+    if not title or not (job_id or link):
+        return None
+    experience = _text(item.get("experience"), 120)
+    location = _text(item.get("location"), 255)
+    remote = _is_remote(location)
+    description = _plain_text(item.get("description"))
+    skills = item.get("skills")
+    if not description and isinstance(skills, list):
+        description = _text("Skills: " + ", ".join(str(skill) for skill in skills), 1200)
+    salary = _text(item.get("salary"), 255)
+    if salary.lower() == "not disclosed":
+        salary = ""
+    return {
+        "title": title,
+        "company": _text(item.get("company") or item.get("companyName"), 255),
+        "type": "it",
+        "category": it_category(title, experience, remote),
+        "description": description or "IT job listing published on Naukri.",
+        "location": location or "India",
+        "salary": salary,
+        "apply_link": link or "#",
+        "deadline": None,
+        "source": "naukri",
+        "external_id": job_id or link,
+        "posted_at": parse_date(item.get("createdDate")) or _relative_date(item.get("postedLabel")),
+    }
+
+
+def _map_glassdoor(item: dict) -> dict | None:
+    title = _text(item.get("title"), 300)
+    link = _text(item.get("platform_url") or item.get("official_url"), 1000)
+    if not title or not link:
+        return None
+    location_raw = item.get("location")
+    location = _text(
+        location_raw.get("raw") if isinstance(location_raw, dict) else location_raw, 255
+    )
+    remote = _is_remote(item.get("is_remote"), item.get("work_mode"), location)
+    salary_lo = item.get("salary_minimum")
+    salary_hi = item.get("salary_maximum")
+    salary = ""
+    if isinstance(salary_lo, (int, float)) or isinstance(salary_hi, (int, float)):
+        lo = _money(salary_lo) if isinstance(salary_lo, (int, float)) else ""
+        hi = _money(salary_hi) if isinstance(salary_hi, (int, float)) else ""
+        currency = _text(item.get("salary_currency"), 12)
+        salary = f"{lo} - {hi} {currency}".strip(" -")
+    return {
+        "title": title,
+        "company": _text(item.get("company_name"), 255),
+        "type": "it",
+        "category": it_category(title, item.get("job_type"), remote),
+        "description": _plain_text(item.get("description"), 1500)
+        or "IT job listing published on Glassdoor.",
+        "location": location or "India",
+        "salary": salary,
+        "apply_link": link,
+        "deadline": None,
+        "source": "glassdoor",
+        "external_id": link,
+        "posted_at": parse_date(item.get("posted_date")),
     }
 
 
@@ -801,6 +889,32 @@ def _indeed_input(query: str, location: str, cap: int = 12) -> Callable[[int], d
     return build
 
 
+_NAUKRI_URLS = [
+    "https://www.naukri.com/software-developer-jobs?k=software+developer",
+    "https://www.naukri.com/data-analyst-jobs?k=data+analyst",
+]
+
+
+def _naukri_input(max_items: int) -> dict:
+    per_url = max(1, (max_items or 24) // len(_NAUKRI_URLS))
+    return {
+        "startUrls": [{"url": url} for url in _NAUKRI_URLS],
+        "maxPagesPerUrl": 1,
+        "maxJobsPerUrl": per_url,
+    }
+
+
+def _glassdoor_input(keyword: str, cap: int = 15) -> Callable[[int], dict]:
+    def build(max_items: int) -> dict:
+        return {
+            "max_results": max(1, min(cap, max_items or cap)),
+            "keyword": keyword,
+            "country": "India",
+        }
+
+    return build
+
+
 # Every developer discipline job seekers actually search for. Each entry becomes its
 # own actor run so the board shows the whole market in one place rather than the two
 # or three generic queries the app started with.
@@ -893,6 +1007,25 @@ SOURCES: list[SourceSpec] = [
             map_item=_map_indeed,
         )
         for role in _INDEED_ROLES
+    ],
+    SourceSpec(
+        key="naukri",
+        label="Naukri",
+        job_type="it",
+        actor="curious_coder/naukri-job-scraper",
+        build_input=_naukri_input,
+        map_item=_map_naukri,
+    ),
+    *[
+        SourceSpec(
+            key="glassdoor",
+            label="Glassdoor",
+            job_type="it",
+            actor="agentx/glassdoor-jobs-scraper",
+            build_input=_glassdoor_input(keyword),
+            map_item=_map_glassdoor,
+        )
+        for keyword in ("software developer", "data analyst")
     ],
 ]
 
