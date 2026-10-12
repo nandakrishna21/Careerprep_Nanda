@@ -20,21 +20,10 @@ from app.schemas.auth import (
     MeResponse,
     RegisterRequest,
     RegisterResponse,
-    ResendOtpRequest,
-    ResendOtpResponse,
     ResetPasswordRequest,
     TokenResponse,
-    VerifyEmailRequest,
-    VerifyEmailResponse,
 )
 from app.services.common import profile_brief, user_brief
-from app.services.email_otp import (
-    OtpError,
-    consume_verify_token,
-    issue_verify_link,
-    send_verification_email,
-    verification_link,
-)
 from app.services.profiles import get_or_create_profile
 
 router = APIRouter(tags=["auth"])
@@ -99,16 +88,12 @@ def register(payload: RegisterRequest, db: DbSession) -> dict:
         full_name=payload.full_name.strip(),
         role="superadmin" if is_owner else "student",
         is_active=True,
-        is_verified=False,
+        is_verified=True,
         is_approved=is_owner,
     )
     db.add(user)
     db.flush()
     db.add(Profile(user_id=user.id, headline=f"{payload.full_name.strip()} - Aspirant"))
-    try:
-        plain, _ = issue_verify_link(db, user)
-    except OtpError as exc:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
     db.commit()
     db.refresh(user)
     for owner in db.scalars(
@@ -123,44 +108,14 @@ def register(payload: RegisterRequest, db: DbSession) -> dict:
             )
         )
     db.commit()
-    emailed = send_verification_email(user, verification_link(plain))
-    response: dict = {"user_id": user.id, "email": user.email, "verification_sent": emailed}
-    if not emailed:
-        response["dev_token"] = plain
-    return response
-
-
-@router.post("/verify-email", response_model=VerifyEmailResponse, response_model_exclude_none=True)
-def verify_email(payload: VerifyEmailRequest, db: DbSession) -> dict:
-    try:
-        user = consume_verify_token(db, payload.token)
-    except OtpError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    if not user.is_approved:
-        return {
-            "approved": False,
-            "message": "Email verified - your account is now awaiting approval by the super admin.",
-        }
-    return {"approved": True, **_issue_token(user)}
-
-
-@router.post("/resend-otp", response_model=ResendOtpResponse, response_model_exclude_none=True)
-def resend_otp(payload: ResendOtpRequest, db: DbSession) -> dict:
-    generic = "If that email is registered, a fresh verification link has been sent."
-    user = _find_user_by_email(db, str(payload.email))
-    if user is None:
-        return {"message": generic}
-    if user.is_verified:
-        return {"message": "This email is already verified - please log in."}
-    try:
-        plain, _ = issue_verify_link(db, user)
-    except OtpError as exc:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
-    emailed = send_verification_email(user, verification_link(plain))
-    response: dict = {"message": generic}
-    if not emailed:
-        response["dev_token"] = plain
-    return response
+    if is_owner:
+        return {"user_id": user.id, "email": user.email, "approved": True, **_issue_token(user)}
+    return {
+        "user_id": user.id,
+        "email": user.email,
+        "approved": False,
+        "message": "Account created - the super admin will review it shortly. You can log in once approved.",
+    }
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -170,11 +125,6 @@ def login(payload: LoginRequest, db: DbSession) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is inactive")
-    if not user.is_verified:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please verify your email first - click the verification link we sent you.",
-        )
     if not user.is_approved:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

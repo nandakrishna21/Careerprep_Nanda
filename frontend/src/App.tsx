@@ -8,7 +8,7 @@ import { Spinner } from './components/ui';
 import Landing from './pages/Landing';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import VerifyEmail from './pages/auth/VerifyEmail';
+import PendingApproval from './pages/auth/PendingApproval';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 
@@ -87,7 +87,7 @@ export default function App() {
       />
       <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
       <Route path="/register" element={<PublicLayout><Register /></PublicLayout>} />
-      <Route path="/verify-email" element={<PublicLayout><VerifyEmail /></PublicLayout>} />
+      <Route path="/pending-approval" element={<PublicLayout><PendingApproval /></PublicLayout>} />
       <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />
       <Route path="/reset-password" element={<PublicLayout><ResetPassword /></PublicLayout>} />
 

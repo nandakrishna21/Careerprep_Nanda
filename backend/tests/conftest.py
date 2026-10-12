@@ -159,12 +159,10 @@ def _owner_headers(client):
         json={"full_name": "Owner", "email": email, "password": "Secret123"},
     )
     if reg.status_code == 200:
-        verify = client.post(
-            "/api/auth/verify-email", json={"token": reg.json()["dev_token"]}
-        )
-        assert verify.status_code == 200, verify.text
-        assert verify.json()["approved"] is True
-        return {"Authorization": f"Bearer {verify.json()['access_token']}"}
+        body = reg.json()
+        assert body["approved"] is True
+        assert body["access_token"]
+        return {"Authorization": f"Bearer {body['access_token']}"}
     assert reg.status_code == 409, reg.text
     login = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
     assert login.status_code == 200, login.text
@@ -180,7 +178,7 @@ def approve_user(client, owner_headers, user_id):
 
 
 def signup_approve_login(client, email, name="Approved User", password="Secret123"):
-    """Full signup funnel: register, verify (pending), approve, log in."""
+    """Full signup funnel: register (pending), approve, log in."""
     owner = _owner_headers(client)
     reg = client.post(
         "/api/auth/register",
@@ -188,9 +186,8 @@ def signup_approve_login(client, email, name="Approved User", password="Secret12
     )
     if reg.status_code == 200:
         body = reg.json()
-        verify = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
-        assert verify.status_code == 200, verify.text
-        assert verify.json()["approved"] is False
+        assert body["approved"] is False
+        assert "access_token" not in body
         approve_user(client, owner, body["user_id"])
     else:
         assert reg.status_code == 409, reg.text

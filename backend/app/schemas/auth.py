@@ -30,29 +30,11 @@ class TokenResponse(BaseModel):
 class RegisterResponse(BaseModel):
     user_id: int
     email: str
-    verification_sent: bool = True
-    dev_token: str | None = None
-
-
-class VerifyEmailRequest(BaseModel):
-    token: str = Field(min_length=10, max_length=200)
-
-
-class VerifyEmailResponse(BaseModel):
     approved: bool
+    message: str = ""
     access_token: str | None = None
     token_type: str = "bearer"
     user: UserOut | None = None
-    message: str = ""
-
-
-class ResendOtpRequest(BaseModel):
-    email: EmailStr
-
-
-class ResendOtpResponse(BaseModel):
-    message: str
-    dev_token: str | None = None
 
 
 class ProfileOut(BaseModel):

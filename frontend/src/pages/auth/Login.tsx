@@ -37,13 +37,7 @@ export default function Login() {
       toast.success('Welcome back!');
       navigate(next, { replace: true });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to sign in.';
-      if (message.toLowerCase().includes('verify your email')) {
-        toast('Please verify your email first - click the link we sent you.');
-        navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`, { replace: true });
-        return;
-      }
-      toast.error(message);
+      toast.error(err instanceof Error ? err.message : 'Unable to sign in.');
     } finally {
       setLoading(false);
     }

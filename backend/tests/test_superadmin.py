@@ -12,8 +12,6 @@ def _register_verify(client, email, name="Test User"):
     )
     if reg.status_code == 200:
         body = reg.json()
-        verify = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
-        assert verify.status_code == 200, verify.text
         approve_user(client, _owner_headers(client), body["user_id"])
     else:
         assert reg.status_code == 409, reg.text  # already registered by an earlier test

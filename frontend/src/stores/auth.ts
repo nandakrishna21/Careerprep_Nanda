@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { get as apiGet, post as apiPost, errorMessage } from '../lib/api';
-import type { AuthResponse, Profile, RegisterResponse, ResendOtpResponse, User, VerifyEmailResponse } from '../lib/types';
+import type { AuthResponse, Profile, RegisterResponse, User } from '../lib/types';
 
 interface AuthState {
   token: string | null;
@@ -11,8 +11,6 @@ interface AuthState {
   hydrate: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<RegisterResponse>;
-  verifyEmailToken: (token: string) => Promise<{ approved: boolean }>;
-  resendOtp: (email: string) => Promise<ResendOtpResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -55,28 +53,12 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   register: async (full_name, email, password) => {
     try {
-      return await apiPost<RegisterResponse>('/auth/register', { full_name, email, password });
-    } catch (err) {
-      throw new Error(errorMessage(err));
-    }
-  },
-
-  verifyEmailToken: async (token) => {
-    try {
-      const data = await apiPost<VerifyEmailResponse>('/auth/verify-email', { token });
+      const data = await apiPost<RegisterResponse>('/auth/register', { full_name, email, password });
       if (data.access_token && data.user) {
         get().setSession(data.access_token, data.user);
         await get().hydrate();
       }
-      return { approved: data.approved };
-    } catch (err) {
-      throw new Error(errorMessage(err));
-    }
-  },
-
-  resendOtp: async (email) => {
-    try {
-      return await apiPost<ResendOtpResponse>('/auth/resend-otp', { email });
+      return data;
     } catch (err) {
       throw new Error(errorMessage(err));
     }

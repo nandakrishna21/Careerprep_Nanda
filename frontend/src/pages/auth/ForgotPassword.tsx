@@ -55,7 +55,7 @@ export default function ForgotPassword() {
           {done.reset_token && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-left dark:border-amber-500/30 dark:bg-amber-500/10">
               <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                <KeyRound className="h-3.5 w-3.5" /> Development mode â€” reset token
+                <KeyRound className="h-3.5 w-3.5" /> Development mode — reset token
               </p>
               <code className="mt-2 block break-all rounded-lg bg-white/70 p-2 text-xs text-slate-700 dark:bg-slate-950/50 dark:text-slate-300">
                 {done.reset_token}

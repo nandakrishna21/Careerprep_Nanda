@@ -70,19 +70,6 @@ class PasswordResetToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class EmailOTP(Base):
-    __tablename__ = "email_otps"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    otp_hash: Mapped[str] = mapped_column(String(64), index=True)
-    purpose: Mapped[str] = mapped_column(String(20), default="signup")
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    attempts: Mapped[int] = mapped_column(Integer, default=0)
-    consumed: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-
-
 class Exam(Base):
     __tablename__ = "exams"
 

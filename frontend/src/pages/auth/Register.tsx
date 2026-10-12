@@ -32,9 +32,14 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await register(name.trim(), email.trim(), password);
-      toast.success('Account created - check your email for the verification link.');
-      navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`, { replace: true });
+      const data = await register(name.trim(), email.trim(), password);
+      if (data.access_token) {
+        toast.success('Welcome aboard!');
+        navigate('/dashboard', { replace: true });
+      } else {
+        toast.success('Account created - awaiting super admin approval.');
+        navigate('/pending-approval', { replace: true });
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unable to register.');
     } finally {

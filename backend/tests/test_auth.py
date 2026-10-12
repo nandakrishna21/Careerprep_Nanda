@@ -17,17 +17,11 @@ def test_register_me_login_flow(client):
     assert res.status_code == 200, res.text
     body = res.json()
     assert "access_token" not in body
-    assert body["verification_sent"] is False  # dev mode: no SMTP, link returned below
+    assert body["approved"] is False
     assert body["user_id"]
-    dev_token = body.get("dev_token")
-    assert dev_token, "expected dev-mode token in register response"
+    assert "Account created" in body.get("message", "")
 
-    # Email verification alone is not enough: the account awaits approval.
-    verify = client.post("/api/auth/verify-email", json={"token": dev_token})
-    assert verify.status_code == 200, verify.text
-    assert verify.json()["approved"] is False
-    assert "access_token" not in verify.json()
-
+    # Login stays blocked until the super admin approves.
     pending = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
     assert pending.status_code == 403
     assert "pending approval" in pending.json()["detail"].lower()
@@ -121,7 +115,6 @@ def test_admin_cannot_approve_accounts(client):
     )
     assert reg.status_code == 200
     user_id = reg.json()["user_id"]
-    client.post("/api/auth/verify-email", json={"token": reg.json()["dev_token"]})
 
     admin_login = client.post(
         "/api/auth/login",
@@ -150,7 +143,6 @@ def test_approval_notifies_user_once(client, db):
         json={"full_name": "Notify Me", "email": email, "password": "Secret123"},
     )
     user_id = reg.json()["user_id"]
-    client.post("/api/auth/verify-email", json={"token": reg.json()["dev_token"]})
 
     approve_user(client, owner, user_id)
     notes = db.scalars(
@@ -179,68 +171,31 @@ def _register(client, email, name="OTP User"):
     return res.json()
 
 
-def test_login_blocked_until_verified(client):
+def test_login_blocked_until_approved(client):
     email = "gated.user@example.com"
     _register(client, email)
     res = client.post("/api/auth/login", json={"email": email, "password": "Secret123"})
     assert res.status_code == 403
-    assert "verify" in res.json()["detail"].lower()
+    assert "pending approval" in res.json()["detail"].lower()
 
 
-def test_wrong_otp_rejected(client):
-    email = "wrong.user@example.com"
-    _register(client, email)
-    res = client.post("/api/auth/verify-email", json={"token": "not-a-real-token"})
-    assert res.status_code == 400
-    assert "invalid" in res.json()["detail"].lower()
+def test_owner_register_logs_instantly(client):
+    res = client.post(
+        "/api/auth/register",
+        json={
+            "full_name": "Owner",
+            "email": settings.superadmin_email,
+            "password": "Secret123",
+        },
+    )
+    if res.status_code == 200:
+        body = res.json()
+        assert body["approved"] is True
+        assert body["access_token"]
+    else:
+        assert res.status_code == 409
 
 
-def test_expired_otp_rejected(client, db):
-    from datetime import timedelta
-
-    from sqlalchemy import select
-
-    from app.models import EmailOTP
-    from app.services.common import naive_utc_now
-
-    email = "expired.user@example.com"
-    body = _register(client, email)
-    row = db.scalar(select(EmailOTP).order_by(EmailOTP.id.desc()))
-    assert row is not None
-    row.expires_at = naive_utc_now() - timedelta(minutes=1)
-    db.commit()
-    res = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
-    assert res.status_code == 400
-    assert "expired" in res.json()["detail"].lower()
-
-
-def test_verify_already_used_link_rejected(client):
-    email = "used.user@example.com"
-    body = _register(client, email)
-    first = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
-    assert first.status_code == 200
-    second = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
-    assert second.status_code == 400
-    assert "already verified" in second.json()["detail"].lower()
-
-
-def test_resend_cooldown_and_unknown_email(client):
-    email = "resend.user@example.com"
-    _register(client, email)
-    res = client.post("/api/auth/resend-otp", json={"email": email})
-    assert res.status_code == 429
-    assert "wait" in res.json()["detail"].lower()
-
-    res = client.post("/api/auth/resend-otp", json={"email": "nobody-here@example.com"})
-    assert res.status_code == 200
-    assert "dev_token" not in res.json()
-
-
-def test_verify_already_verified(client):
-    email = "twice.user@example.com"
-    body = _register(client, email)
-    first = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
-    assert first.status_code == 200
-    second = client.post("/api/auth/verify-email", json={"token": body["dev_token"]})
-    assert second.status_code == 400
-    assert "already verified" in second.json()["detail"].lower()
+def test_removed_email_verification_routes(client):
+    assert client.post("/api/auth/verify-email", json={"token": "x" * 32}).status_code == 404
+    assert client.post("/api/auth/resend-otp", json={"email": "a@b.com"}).status_code == 404

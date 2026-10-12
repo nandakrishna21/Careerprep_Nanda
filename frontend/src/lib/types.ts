@@ -32,21 +32,11 @@ export interface AuthResponse {
 export interface RegisterResponse {
   user_id: number;
   email: string;
-  verification_sent: boolean;
-  dev_token?: string;
-}
-
-export interface ResendOtpResponse {
-  message: string;
-  dev_token?: string;
-}
-
-export interface VerifyEmailResponse {
   approved: boolean;
+  message?: string;
   access_token?: string;
   token_type: string;
   user?: User;
-  message?: string;
 }
 export interface Topic {
   id: number;
