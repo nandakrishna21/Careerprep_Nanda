@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+from datetime import date, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, status
 from sqlalchemy import func, or_, select
@@ -34,6 +35,10 @@ _PAGE_SIZE_MAX = 100
 
 def _title_case(value: str) -> str:
     return value.replace("-", " ").replace("_", " ").title()
+
+
+def _days_ago(days: int) -> date:
+    return date.today() - timedelta(days=max(1, min(365, days)))
 
 
 def _paginate(page: int, page_size: int) -> tuple[int, int, int]:
@@ -94,6 +99,7 @@ def _applied_filters(
     role: str | None,
     location: str | None,
     experience: int | None,
+    posted_within: int | None,
     q: str | None,
 ):
     if type:
@@ -106,6 +112,8 @@ def _applied_filters(
         stmt = stmt.where(Job.city == location)
     if experience is not None:
         stmt = stmt.where(Job.exp_min <= experience)
+    if posted_within:
+        stmt = stmt.where(Job.posted_at >= _days_ago(posted_within))
     if q:
         needle = q.lower()
         stmt = stmt.where(
@@ -127,24 +135,31 @@ def list_jobs(
     role: str | None = None,
     location: str | None = None,
     experience: int | None = None,
+    posted_within: int | None = None,
+    sort: str | None = None,
     q: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
     page, page_size, offset = _paginate(page, page_size)
     stmt = select(Job).where(Job.is_published.is_(True))
-    stmt = _applied_filters(stmt, type, category, role, location, experience, q)
+    stmt = _applied_filters(stmt, type, category, role, location, experience, posted_within, q)
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
-    rows = db.scalars(
-        stmt.order_by(
+    if sort == "deadline":
+        ordering = (
+            Job.deadline.is_(None).asc(),
+            Job.deadline.asc(),
+            Job.created_at.desc(),
+            Job.id.desc(),
+        )
+    else:
+        ordering = (
             Job.posted_at.is_(None).asc(),
             Job.posted_at.desc(),
             Job.created_at.desc(),
             Job.id.desc(),
         )
-        .offset(offset)
-        .limit(page_size)
-    ).all()
+    rows = db.scalars(stmt.order_by(*ordering).offset(offset).limit(page_size)).all()
     saved = _saved_statuses(db, user)
     return {
         "items": [_job_item(job, saved) for job in rows],

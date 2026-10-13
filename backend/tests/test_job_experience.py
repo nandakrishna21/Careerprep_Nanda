@@ -105,3 +105,43 @@ def test_experience_filter_facets_and_label(client, db):
 
     fresher = next(item for item in zero["items"] if item["title"] == "Exp Test Fresher")
     assert fresher["experience"] == "Fresher"
+
+
+def test_posted_within_and_deadline_sort(client, db):
+    from datetime import date, timedelta
+
+    from app.models import Job
+
+    today = date.today()
+    specs = [
+        ("Exp Test Old Open", today - timedelta(days=40), today + timedelta(days=60)),
+        ("Exp Test Fresh Urgent", today - timedelta(days=2), today + timedelta(days=3)),
+    ]
+    for title, posted, deadline in specs:
+        if db.query(Job).filter(Job.title == title).first() is None:
+            db.add(
+                Job(
+                    title=title,
+                    company="probe co",
+                    type="it",
+                    category="fulltime",
+                    description="freshness probe",
+                    location="Hyderabad",
+                    salary="",
+                    apply_link="https://example.com",
+                    source="probe",
+                    external_id=f"probe-{title}",
+                    posted_at=posted,
+                    deadline=deadline,
+                )
+            )
+    db.commit()
+
+    fresh = client.get("/api/jobs", params={"type": "it", "posted_within": 7}).json()
+    fresh_titles = {item["title"] for item in fresh["items"]}
+    assert "Exp Test Fresh Urgent" in fresh_titles
+    assert "Exp Test Old Open" not in fresh_titles
+
+    ordered = client.get("/api/jobs", params={"type": "it", "sort": "deadline"}).json()
+    deadlines = [item["deadline"] for item in ordered["items"] if item["deadline"]]
+    assert deadlines == sorted(deadlines)

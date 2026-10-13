@@ -83,6 +83,8 @@ export default function Jobs() {
   const [role, setRole] = useState('');
   const [location, setLocation] = useState('');
   const [experience, setExperience] = useState('');
+  const [postedWithin, setPostedWithin] = useState('');
+  const [sort, setSort] = useState('newest');
   const [draft, setDraft] = useState('');
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
@@ -154,7 +156,8 @@ export default function Jobs() {
   const roleOptions = group?.roles ?? [];
   const locationOptions = group?.locations ?? [];
   const experienceOptions = group?.experience ?? [];
-  const hasFilters = Boolean(category || role || location || experience !== '');
+  const topCities = locationOptions.slice(0, 5);
+  const hasFilters = Boolean(category || role || location || experience !== '' || postedWithin !== '');
 
   useEffect(() => {
     let alive = true;
@@ -182,6 +185,8 @@ export default function Jobs() {
           if (role) params.role = role;
           if (location) params.location = location;
           if (experience !== '') params.experience = Number(experience);
+          if (postedWithin !== '') params.posted_within = Number(postedWithin);
+          if (sort !== 'newest') params.sort = sort;
           if (q.trim()) params.q = q.trim();
           const res = await get<Paged<Job>>('/jobs', params);
           if (!alive) return;
@@ -202,7 +207,7 @@ export default function Jobs() {
     return () => {
       alive = false;
     };
-  }, [tab, category, role, location, experience, q, page, refreshKey]);
+  }, [tab, category, role, location, experience, postedWithin, sort, q, page, refreshKey]);
 
   const switchTab = (next: Tab) => {
     setTab(next);
@@ -210,6 +215,7 @@ export default function Jobs() {
     setRole('');
     setLocation('');
     setExperience('');
+    setPostedWithin('');
     setPage(1);
   };
 
@@ -218,6 +224,8 @@ export default function Jobs() {
     setRole('');
     setLocation('');
     setExperience('');
+    setPostedWithin('');
+    setSort('newest');
     setPage(1);
   };
 
@@ -303,6 +311,32 @@ export default function Jobs() {
           />
         </form>
       </div>
+
+      {tab !== 'saved' && topCities.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Popular:</span>
+          {topCities.map((option) => {
+            const active = location === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setLocation(active ? '' : option.value);
+                  setPage(1);
+                }}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                  active
+                    ? 'bg-brand-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                }`}
+              >
+                {option.label} ({option.count})
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {tab === 'remote' && (
         <div>
@@ -439,6 +473,32 @@ export default function Jobs() {
                 </Select>
               </div>
             )}
+
+            <div className="w-full sm:w-44">
+              <Select
+                value={postedWithin}
+                onChange={(e) => {
+                  setPostedWithin(e.target.value);
+                  setPage(1);
+                }}
+                aria-label="Posted within"
+              >
+                <option value="">Any time</option>
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+              </Select>
+            </div>
+
+            <div className="w-full sm:w-44">
+              <Select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                aria-label="Sort by"
+              >
+                <option value="newest">Newest first</option>
+                <option value="deadline">Closing soon</option>
+              </Select>
+            </div>
 
             {hasFilters && (
               <Button variant="outline" onClick={clearFilters}>

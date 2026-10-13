@@ -865,12 +865,12 @@ def _rojgarlive_input(max_items: int) -> dict:
     }
 
 
-def _linkedin_input(keywords: str, cap: int = 8) -> Callable[[int], dict]:
+def _linkedin_input(keywords: str, cap: int = 8, location: str = "India") -> Callable[[int], dict]:
     def build(max_items: int) -> dict:
         return {
             "urls": [],
             "keywords": keywords,
-            "location": "India",
+            "location": location,
             "datePosted": "pastMonth",
             "companyIds": [],
             "under10Applicants": False,
@@ -906,6 +906,31 @@ def _naukri_input(max_items: int) -> dict:
     per_url = max(1, (max_items or 24) // len(_NAUKRI_URLS))
     return {
         "startUrls": [{"url": url} for url in _NAUKRI_URLS],
+        "maxPagesPerUrl": 1,
+        "maxJobsPerUrl": per_url,
+    }
+
+
+# Deep coverage for Hyderabad across the most-searched disciplines. Each entry
+# becomes location-targeted actor runs so Hyderabad openings surface reliably
+# instead of drowning in all-India queries.
+_HYDERABAD_ROLES = [
+    "full stack developer",
+    "backend developer",
+    "machine learning engineer",
+]
+
+_NAUKRI_HYDERABAD_URLS = [
+    "https://www.naukri.com/full-stack-developer-jobs-in-hyderabad?k=full+stack+developer",
+    "https://www.naukri.com/backend-developer-jobs-in-hyderabad?k=backend+developer",
+    "https://www.naukri.com/machine-learning-jobs-in-hyderabad?k=machine+learning",
+]
+
+
+def _naukri_hyderabad_input(max_items: int) -> dict:
+    per_url = max(1, (max_items or 24) // len(_NAUKRI_HYDERABAD_URLS))
+    return {
+        "startUrls": [{"url": url} for url in _NAUKRI_HYDERABAD_URLS],
         "maxPagesPerUrl": 1,
         "maxJobsPerUrl": per_url,
     }
@@ -1033,6 +1058,47 @@ SOURCES: list[SourceSpec] = [
             map_item=_map_glassdoor,
         )
         for keyword in ("software developer", "data analyst")
+    ],
+    *[
+        SourceSpec(
+            key="linkedin",
+            label="LinkedIn",
+            job_type="it",
+            actor="curious_coder/linkedin-jobs-scraper",
+            build_input=_linkedin_input(role, cap=6, location="Hyderabad"),
+            map_item=_map_linkedin,
+        )
+        for role in _HYDERABAD_ROLES
+    ],
+    *[
+        SourceSpec(
+            key="indeed",
+            label="Indeed",
+            job_type="it",
+            actor="curious_coder/indeed-scraper",
+            build_input=_indeed_input(role, "Hyderabad", cap=8),
+            map_item=_map_indeed,
+        )
+        for role in _HYDERABAD_ROLES
+    ],
+    SourceSpec(
+        key="naukri",
+        label="Naukri",
+        job_type="it",
+        actor="curious_coder/naukri-job-scraper",
+        build_input=_naukri_hyderabad_input,
+        map_item=_map_naukri,
+    ),
+    *[
+        SourceSpec(
+            key="glassdoor",
+            label="Glassdoor",
+            job_type="it",
+            actor="agentx/glassdoor-jobs-scraper",
+            build_input=_glassdoor_input(keyword, cap=10),
+            map_item=_map_glassdoor,
+        )
+        for keyword in _HYDERABAD_ROLES
     ],
 ]
 

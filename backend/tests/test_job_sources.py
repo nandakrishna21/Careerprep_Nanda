@@ -92,3 +92,33 @@ def test_map_glassdoor():
 def test_map_glassdoor_rejects_empty():
     assert _map_glassdoor({"title": "Dev"}) is None
     assert _map_glassdoor({"platform_url": "https://x"}) is None
+
+
+def test_hyderabad_inputs():
+    from app.services.job_sync import (
+        _HYDERABAD_ROLES,
+        _glassdoor_input,
+        _indeed_input,
+        _linkedin_input,
+        _naukri_hyderabad_input,
+    )
+
+    assert _HYDERABAD_ROLES == [
+        "full stack developer",
+        "backend developer",
+        "machine learning engineer",
+    ]
+    linkedin = _linkedin_input("backend developer", cap=6, location="Hyderabad")(25)
+    assert linkedin["location"] == "Hyderabad"
+    assert linkedin["limitPerSource"] == 6
+    assert _linkedin_input("x")(25)["location"] == "India"
+    indeed = _indeed_input("backend developer", "Hyderabad", cap=8)(25)
+    assert indeed["location"] == "Hyderabad"
+    assert indeed["count"] == 8
+    naukri = _naukri_hyderabad_input(25)
+    assert len(naukri["startUrls"]) == 3
+    assert all("hyderabad" in entry["url"] for entry in naukri["startUrls"])
+    glassdoor = _glassdoor_input("backend developer", cap=10)(25)
+    assert glassdoor["country"] == "India"
+    assert glassdoor["max_results"] == 10
+    assert "location" not in glassdoor  # city filter resolves nothing; facets cover it
