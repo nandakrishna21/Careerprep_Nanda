@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Flame,
   GraduationCap,
+  Instagram,
   LayoutDashboard,
   LogOut,
   Map,
@@ -27,6 +28,7 @@ import { useAuth } from '../stores/auth';
 import { Avatar, ThemeToggle } from '../components/ui';
 
 const YOUTUBE_CHANNEL = 'https://www.youtube.com/@freejobsinformation';
+const INSTAGRAM_DMS = 'https://www.instagram.com/direct/inbox/';
 const DSA_COURSE = 'https://getsdeready.com/courses/dsa/lesson/convert-a-number-to-hexadecimal/?page_tab=overview';
 const DSA_YOUTUBE = 'https://www.youtube.com/@CodeHelp';
 const DSA_PLAYLIST_TELUGU = 'https://www.youtube.com/playlist?list=PLjzLBp9HHZWiJrhfJzTAEbwdpQIfUXtwP';
@@ -79,10 +81,16 @@ const nav: NavGroup[] = [
   },
   {
     label: 'YouTube',
-    items: [
-      { href: YOUTUBE_CHANNEL, label: 'Free Jobs Information', icon: Youtube },
-    ],
-  },
+      items: [
+        { href: YOUTUBE_CHANNEL, label: 'Free Jobs Information', icon: Youtube },
+      ],
+    },
+    {
+      label: 'Instagram',
+      items: [
+        { href: INSTAGRAM_DMS, label: 'Open Instagram DMs', icon: Instagram },
+      ],
+    },
   {
     label: 'AI Tools',
     items: [
