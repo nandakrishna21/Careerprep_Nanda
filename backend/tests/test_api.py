@@ -156,3 +156,22 @@ def test_admin_course_crud(client):
 
     deleted = client.delete(f"/api/admin/courses/{course_id}", headers=headers)
     assert deleted.status_code == 200
+
+
+def test_jobs_board_readable_without_login(client):
+    listing = client.get("/api/jobs", params={"page_size": 1}).json()
+    assert listing["total"] >= 1
+    job_id = listing["items"][0]["id"]
+
+    detail = client.get(f"/api/jobs/{job_id}")
+    assert detail.status_code == 200
+    assert detail.json()["id"] == job_id
+    assert detail.json()["is_saved"] is False
+
+    assert client.get("/api/jobs/facets").status_code == 200
+    assert client.get("/api/jobs/categories").status_code == 200
+    assert client.get("/api/jobs/remote-sites").status_code == 200
+    assert client.get("/api/jobs/sync/status").status_code == 200
+
+    assert client.post(f"/api/jobs/{job_id}/save").status_code == 401
+    assert client.get("/api/jobs/saved").status_code == 401

@@ -245,6 +245,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
+            {user ? (
             <div className="relative">
               <button
                 className="flex items-center gap-2 rounded-xl p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -281,6 +282,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </>
               )}
             </div>
+            ) : (
+              <Link
+                to="/login"
+                className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+              >
+                Sign in
+              </Link>
+            )}
           </div>
         </header>
 

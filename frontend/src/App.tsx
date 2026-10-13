@@ -45,6 +45,7 @@ const AiResume = lazy(() => import('./pages/ai/AiResume'));
 const AiResumeAnalyze = lazy(() => import('./pages/ai/AiResumeAnalyze'));
 
 const Jobs = lazy(() => import('./pages/jobs/Jobs'));
+const JobDetail = lazy(() => import('./pages/jobs/JobDetail'));
 const Admin = lazy(() => import('./pages/admin/Admin'));
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -100,6 +101,10 @@ export default function App() {
       <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />
       <Route path="/reset-password" element={<PublicLayout><ResetPassword /></PublicLayout>} />
 
+      {/* Jobs are public so shared links open on any device, logged in or not. */}
+      <Route path="/jobs" element={<AppLayout><Jobs /></AppLayout>} />
+      <Route path="/jobs/:id" element={<AppLayout><JobDetail /></AppLayout>} />
+
       <Route
         path="*"
         element={
@@ -135,7 +140,6 @@ export default function App() {
                 <Route path="/ai/resume" element={<AiResume />} />
                 <Route path="/ai/resume/analyze" element={<AiResumeAnalyze />} />
 
-                <Route path="/jobs" element={<Jobs />} />
                 <Route
                   path="/admin/*"
                   element={

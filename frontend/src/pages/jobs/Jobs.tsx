@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Bookmark,
@@ -11,11 +12,13 @@ import {
   MapPin,
   RefreshCw,
   Search as SearchIcon,
+  Share2,
   Wallet,
 } from 'lucide-react';
 import api, { errorMessage, get, post, del } from '../../lib/api';
 import type { Job, JobFacets, Paged, RemoteSite } from '../../lib/types';
 import { Badge, Button, Card, EmptyState, Select, Spinner } from '../../components/ui';
+import { useAuth } from '../../stores/auth';
 import { postedAgo, titleCase } from '../../components/helpers';
 
 type Tab = 'all' | 'government' | 'it' | 'remote' | 'saved';
@@ -78,6 +81,8 @@ function daysLeft(deadline: string | null): { label: string; tone: string } | nu
 }
 
 export default function Jobs() {
+  const { token } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('all');
   const [category, setCategory] = useState('');
   const [role, setRole] = useState('');
@@ -235,7 +240,14 @@ export default function Jobs() {
     setQ(draft);
   };
 
+  const visibleTabs = TABS.filter((t) => t.key !== 'saved' || token);
+
   const toggleSave = async (job: Job) => {
+    if (!token) {
+      toast('Sign in to save jobs.');
+      navigate('/login?next=/jobs');
+      return;
+    }
     setBusyId(job.id);
     try {
       if (job.is_saved) {
@@ -269,6 +281,15 @@ export default function Jobs() {
     }
   };
 
+  const shareJob = async (job: Job) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/jobs/${job.id}`);
+      toast.success('Link copied - share it anywhere.');
+    } catch {
+      toast.error('Could not copy the link.');
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageSize)));
 
   return (
@@ -283,7 +304,7 @@ export default function Jobs() {
           </p>
         </div>
         <div className="inline-flex w-fit flex-wrap rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-          {TABS.map((t) => (
+          {visibleTabs.map((t) => (
             <button
               key={t.key}
               type="button"
@@ -535,7 +556,9 @@ export default function Jobs() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h2 className="line-clamp-2 font-bold leading-snug text-slate-900 dark:text-white">
-                      {job.title}
+                      <Link to={`/jobs/${job.id}`} className="transition hover:text-brand-600 dark:hover:text-brand-400">
+                        {job.title}
+                      </Link>
                     </h2>
                     <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
                       <Building2 className="h-3.5 w-3.5 shrink-0" />
@@ -602,8 +625,15 @@ export default function Jobs() {
                       aria-label={job.is_saved ? 'Unsave job' : 'Save job'}
                     >
                       {job.is_saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                      {job.is_saved ? 'Saved' : 'Save'}
-                    </Button>
+                        {job.is_saved ? 'Saved' : 'Save'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => void shareJob(job)}
+                        aria-label="Copy link to this job"
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </Button>
                   </div>
 
                   {job.is_saved && (
