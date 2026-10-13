@@ -28,6 +28,7 @@ import { useAuth } from '../stores/auth';
 import { Avatar, ThemeToggle } from '../components/ui';
 
 const YOUTUBE_CHANNEL = 'https://www.youtube.com/@freejobsinformation';
+const VTHETECHEE_CHANNEL = 'https://www.youtube.com/@VtheTechee';
 const INSTAGRAM_DMS = 'https://www.instagram.com/direct/inbox/';
 const DSA_COURSE = 'https://getsdeready.com/courses/dsa/lesson/convert-a-number-to-hexadecimal/?page_tab=overview';
 const DSA_YOUTUBE = 'https://www.youtube.com/@CodeHelp';
@@ -83,6 +84,7 @@ const nav: NavGroup[] = [
     label: 'YouTube',
       items: [
         { href: YOUTUBE_CHANNEL, label: 'Free Jobs Information', icon: Youtube },
+        { href: VTHETECHEE_CHANNEL, label: 'V the Techee', icon: Youtube },
       ],
     },
     {
