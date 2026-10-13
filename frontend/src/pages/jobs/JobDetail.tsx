@@ -82,7 +82,7 @@ export default function JobDetail() {
 
   const share = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(job?.share_url || window.location.href);
       toast.success('Link copied - share it anywhere.');
     } catch {
       toast.error('Could not copy the link.');

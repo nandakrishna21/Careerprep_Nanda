@@ -1,5 +1,6 @@
 """Naukri / Glassdoor mappers and relative-date parsing (no network)."""
 
+import re
 from datetime import timedelta
 
 from app.services.common import naive_utc_now
@@ -122,3 +123,35 @@ def test_hyderabad_inputs():
     assert glassdoor["country"] == "India"
     assert glassdoor["max_results"] == 10
     assert "location" not in glassdoor  # city filter resolves nothing; facets cover it
+
+
+def test_short_code_round_trip():
+    from app.services.common import decode_short_code, short_code
+
+    for job_id in (1, 123, 45678, 999999):
+        assert decode_short_code(short_code(job_id)) == job_id
+    assert decode_short_code("") is None
+    assert decode_short_code("!!!") is None
+    assert decode_short_code("x" * 20) is None
+
+
+def test_share_page_and_payload(client, db):
+    from app.models import Job
+
+    row = db.query(Job).filter(Job.is_published.is_(True)).first()
+    assert row is not None
+    code = __import__("app.services.common", fromlist=["short_code"]).short_code(row.id)
+
+    page = client.get(f"/api/jobs/share/{code}")
+    assert page.status_code == 200
+    assert "text/html" in page.headers["content-type"]
+    assert "og:title" in page.text
+    assert row.title[:30] in page.text
+    assert f"/jobs/{row.id}" in page.text
+
+    assert client.get("/api/jobs/share/!!!").status_code == 404
+    assert client.get("/api/jobs/share/ZZZZZZZZZZ").status_code == 404
+
+    listing = client.get("/api/jobs", params={"page_size": 1}).json()
+    first = listing["items"][0]
+    assert re.search(r"/s/[0-9A-Za-z]+$", first["share_url"]), first["share_url"]

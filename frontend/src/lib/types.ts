@@ -177,6 +177,7 @@ export interface Job {
     experience?: string;
     posted_at: string | null;
     created_at: string;
+    share_url?: string;
   is_saved?: boolean;
   save_status?: string;
 }

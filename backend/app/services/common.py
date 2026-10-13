@@ -10,6 +10,40 @@ from app.services.job_taxonomy import experience_label, role_label
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
+_SHORT_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+
+def short_code(job_id: int) -> str:
+    """Compact base62 id for share links (``/s/a3f9``). No storage needed."""
+    if job_id <= 0:
+        raise ValueError("job id must be positive")
+    digits: list[str] = []
+    value = job_id
+    while value:
+        value, remainder = divmod(value, 62)
+        digits.append(_SHORT_ALPHABET[remainder])
+    return "".join(reversed(digits))
+
+
+def decode_short_code(code: str) -> int | None:
+    """Reverse of :func:`short_code`; ``None`` when malformed."""
+    text = (code or "").strip()
+    if not text or len(text) > 11 or any(ch not in _SHORT_ALPHABET for ch in text):
+        return None
+    value = 0
+    for ch in text:
+        value = value * 62 + _SHORT_ALPHABET.index(ch)
+    return value if value > 0 else None
+
+
+def share_url(job_id: int | None) -> str:
+    from app.core.config import settings
+
+    if not job_id:
+        return ""
+    base = (settings.frontend_url or "http://localhost:5173").rstrip("/")
+    return f"{base}/s/{short_code(job_id)}"
+
 
 def slugify(value: str) -> str:
     slug = _SLUG_RE.sub("-", value.lower()).strip("-")
@@ -94,6 +128,7 @@ def job_brief(job) -> dict:
         "experience": experience_label(job.exp_min, job.exp_max),
         "posted_at": job.posted_at,
         "created_at": job.created_at,
+        "share_url": share_url(job.id),
     }
 
 

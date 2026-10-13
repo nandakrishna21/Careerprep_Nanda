@@ -283,7 +283,7 @@ export default function Jobs() {
 
   const shareJob = async (job: Job) => {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/jobs/${job.id}`);
+      await navigator.clipboard.writeText(job.share_url || `${window.location.origin}/jobs/${job.id}`);
       toast.success('Link copied - share it anywhere.');
     } catch {
       toast.error('Could not copy the link.');

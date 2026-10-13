@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import html
 import secrets
 from datetime import date, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, status
+from fastapi.responses import HTMLResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -12,7 +14,7 @@ from app.core.config import settings
 from app.core.security import CurrentUser, DbSession
 from app.models import Job, SavedJob, User
 from app.schemas.misc import SaveJobRequest
-from app.services.common import job_brief
+from app.services.common import decode_short_code, job_brief, share_url
 from app.services.job_taxonomy import (
     experience_options,
     locations_with_counts,
@@ -302,6 +304,58 @@ def scheduled_job_sync(
         return {"started": False, "reason": "a sync is already running"}
     background_tasks.add_task(_run_scheduled_sync)
     return {"started": True}
+
+
+@router.get("/share/{code}", response_class=HTMLResponse)
+def share_job_page(code: str, db: DbSession) -> HTMLResponse:
+    """Short share target (``/s/<code>`` via the frontend rewrite).
+
+    Returns crawler-friendly Open Graph tags so Instagram/WhatsApp/Telegram
+    render a rich preview, then redirects humans to the job page. Public.
+    """
+    job_id = decode_short_code(code)
+    job = db.get(Job, job_id) if job_id else None
+    if job is None or not job.is_published:
+        return HTMLResponse(_share_html(None), status_code=404)
+    return HTMLResponse(_share_html(job))
+
+
+def _share_html(job) -> str:
+    from app.core.config import settings
+
+    home = (settings.frontend_url or "http://localhost:5173").rstrip("/")
+    if job is None:
+        title, description, target = (
+            "Job not found",
+            "This posting may have closed or been removed. Browse all openings on CareerPrep Hub.",
+            f"{home}/jobs",
+        )
+    else:
+        bits = [bit for bit in (job.company or "", job.location or "", job.salary or "") if bit]
+        posted = job.posted_at.isoformat()[:10] if job.posted_at else ""
+        if posted:
+            bits.append(f"posted {posted}")
+        title = f"{job.title} at {job.company}" if job.company else job.title
+        description = " · ".join(bits) or (job.description or "")[:200]
+        target = f"{home}/jobs/{job.id}"
+    escape = html.escape
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{escape(title)} | CareerPrep Hub</title>
+<meta property="og:title" content="{escape(title)}">
+<meta property="og:description" content="{escape(description[:300])}">
+<meta property="og:type" content="article">
+<meta name="theme-color" content="#4f46e5">
+<link rel="canonical" href="{escape(target)}">
+<meta http-equiv="refresh" content="0;url={escape(target)}">
+</head>
+<body>
+<p>Opening job&hellip; <a href="{escape(target)}">Continue</a></p>
+<script>location.replace({target!r});</script>
+</body>
+</html>"""
 
 
 @router.get("/{id}")
