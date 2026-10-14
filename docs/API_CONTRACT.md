@@ -137,7 +137,7 @@ Same catalog endpoints (courses category=it; courses with `career_path=true` for
 
 - GET `/jobs?type=government|it&category=&q=&page=` → paged `{items,total,page,page_size}` + each item `is_saved`
 - GET `/jobs/{id}`; POST `/jobs/{id}/save`; PATCH `/jobs/{id}/save` `{status}`; DELETE `/jobs/{id}/save`; GET `/jobs/saved`
-- My Jobs List (private per user, superadmin tracks applied roles): GET `/my-jobs?status=` → `{items,total}`; GET `/my-jobs/{id}`; POST `/my-jobs`; PUT `/my-jobs/{id}`; DELETE `/my-jobs/{id}`; GET `/my-jobs/templates` (UIICL AO Scale I + UPSC EPFO APFC with syllabus/strategy/plan); GET `/my-jobs/templates/{key}`; POST `/my-jobs/from-template/{key}` (idempotent). Frontend: `/my-jobs`.
+- My Jobs List (private per user, superadmin tracks applied roles): GET `/my-jobs?status=` → `{items,total}`; GET `/my-jobs/{id}`; POST `/my-jobs`; PUT `/my-jobs/{id}`; DELETE `/my-jobs/{id}`; GET `/my-jobs/templates` (UIICL AO Scale I + UPSC EPFO APFC with syllabus/strategy/plan/resources); GET `/my-jobs/templates/{key}`; POST `/my-jobs/from-template/{key}` (idempotent); POST `/my-jobs/{id}/refresh-template` (re-pull latest study material incl. free resources, preserves status/notes/dates). Each job carries `resources:[{subject, youtube:[{title,url,note}], websites:[{title,url,note}]}]`. Frontend: `/my-jobs` (Overview/Syllabus/Pattern/Strategy/Preparation/Free Resources/My Notes tabs + Sync latest).
 
 ## 10. Progress / Leaderboard / Gamification
 

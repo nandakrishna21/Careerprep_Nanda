@@ -62,6 +62,52 @@ TEMPLATES: list[dict] = [
             {"phase": "Phase 2 — Sectional mastery (Weeks 5–8)", "weeks": "5-8", "focus": ["DI sets + timed sectional tests", "High-weightage puzzles/seating", "Insurance & banking awareness depth", "Descriptive under time"], "tasks": ["2 sectional tests/week per subject", "Revise error log every Sunday", "Monthly GK + IRDAI/RBI circulars", "1 full mock every weekend"]},
             {"phase": "Phase 3 — Exam temperament (Weeks 9–12)", "weeks": "9-12", "focus": ["150-min mocks with sectional timers", "Negative-marking discipline", "Rapid revision sheets"], "tasks": ["2 full mocks/week + deep review", "Only revise weak topics from mocks", "Descriptive 30-min drill weekly", "Interview prep: intro + insurance FAQs"]},
         ],
+        "resources": [
+            {
+                "subject": "Reasoning + Quant (free classes)",
+                "youtube": [
+                    {"title": "Adda247 — Reasoning & Quant playlists", "url": "https://www.youtube.com/@Adda247", "note": "Free daily reasoning/quant classes + Hindu editorial streams"},
+                    {"title": "Oliveboard — Banking/Insurance reasoning", "url": "https://www.youtube.com/@Oliveboard", "note": "Free concept + shortcut videos"},
+                ],
+                "websites": [
+                    {"title": "ixamBee — Free UIIC AO Generalist mocks", "url": "https://www.ixambee.com/free-mock-tests/uiic-ao-generalist", "note": "Completely free mocks, multiple retakes"},
+                    {"title": "Oliveboard — Free UIIC AO mock test", "url": "https://www.oliveboard.in/uiic-ao-mock-test/", "note": "Free mock with analytics (English + Hindi)"},
+                    {"title": "Adda247 — UIIC mock kit (1 free mock)", "url": "https://www.adda247.com/uiic/mock-tests-kit", "note": "Free demo mock before paid series"},
+                ],
+            },
+            {
+                "subject": "English + Descriptive",
+                "youtube": [
+                    {"title": "Adda247 — English + editorial analysis", "url": "https://www.youtube.com/@Adda247", "note": "Free Hindu editorial + grammar live streams"},
+                ],
+                "websites": [
+                    {"title": "ixamBee — UIIC AO mocks (descriptive practice)", "url": "https://www.ixambee.com/free-mock-tests/uiic-ao-generalist", "note": "Pair with weekly 30-min letter + essay drill"},
+                ],
+            },
+            {
+                "subject": "General / Financial Awareness",
+                "youtube": [
+                    {"title": "Adda247 — Current affairs streams", "url": "https://www.youtube.com/@Adda247", "note": "Free daily CA + financial-sector updates"},
+                    {"title": "Free Jobs Information", "url": "https://www.youtube.com/@freejobsinformation", "note": "Job + exam update videos"},
+                ],
+                "websites": [
+                    {"title": "AffairsCloud — Banking & insurance GK", "url": "https://www.affairscloud.com", "note": "Free daily banking/insurance awareness + quizzes"},
+                    {"title": "BankExamsToday — Insurance awareness", "url": "https://www.bankexamstoday.com", "note": "Free insurance/banking study notes"},
+                    {"title": "PIB — Official releases", "url": "https://pib.gov.in", "note": "Primary source for govt schemes, RBI/IRDAI news"},
+                ],
+            },
+            {
+                "subject": "Computer Knowledge + Official",
+                "youtube": [
+                    {"title": "Oliveboard — Computer awareness", "url": "https://www.youtube.com/@Oliveboard", "note": "Free computer-knowledge concept videos"},
+                    {"title": "V the Techee", "url": "https://www.youtube.com/@VtheTechee", "note": "Tech explainers (computers/IT basics)"},
+                ],
+                "websites": [
+                    {"title": "UIICL — Official site & notifications", "url": "https://uiic.co.in", "note": "Notifications, admit cards, results"},
+                    {"title": "IRDAI — Insurance regulator", "url": "https://irdai.gov.in", "note": "Insurance terms + circulars for GA"},
+                ],
+            },
+        ],
     },
     {
         "template_key": "upsc-epfo-apfc",
@@ -101,6 +147,48 @@ TEMPLATES: list[dict] = [
             {"phase": "Phase 1 — High-weightage core (Weeks 1–6)", "weeks": "1-6", "focus": ["Labour laws + social security", "Accounting + auditing + insurance", "Constitution & governance"], "tasks": ["Bare-act/code summaries + 30 MCQs/day", "Accounting drills + statements practice", "Polity notes + weekly revision", "English 20 min/day"]},
             {"phase": "Phase 2 — Breadth + current (Weeks 7–12)", "weeks": "7-12", "focus": ["Economy + culture/heritage", "Population/globalization/environment", "Science + computers + stats"], "tasks": ["Monthly current-affairs compilation", "Stats formula + DI sets weekly", "Culture via PYQs + maps/charts", "1 CRT mock every 2 weeks"]},
             {"phase": "Phase 3 — CRT temperament (Weeks 13–16)", "weeks": "13-16", "focus": ["2-hour mocks, negative-mark discipline", "Interview prep alongside"], "tasks": ["1–2 full 120Q mocks/week + error log", "Only revise weak units from mocks", "EPFO interview: Act, schemes, APFC role", "Rapid-fire revision sheets last 10 days"]},
+        ],
+        "resources": [
+            {
+                "subject": "Labour Laws & Industrial Relations (highest weightage)",
+                "youtube": [
+                    {"title": "EduTap — Complete Labour Law 7-hr marathon", "url": "https://www.youtube.com/watch?v=097lMfolgdA", "note": "All 12 key labour laws in one free session (EPFO-focused)"},
+                ],
+                "websites": [
+                    {"title": "EduTap — Free EPFO EO/AO + APFC starter course", "url": "https://edutap.in/upsc-epfo-courses/free-course/", "note": "Free concept classes, notes + mock tests"},
+                ],
+            },
+            {
+                "subject": "Accounting, Auditing, Insurance + Social Security",
+                "youtube": [
+                    {"title": "EPFO — Official channel", "url": "https://www.youtube.com/socialepfo", "note": "Schemes (EPS/EDLI), acts and explainer videos"},
+                ],
+                "websites": [
+                    {"title": "EduTap — Free EPFO course (accounts/audit)", "url": "https://edutap.in/upsc-epfo-courses/free-course/", "note": "Free accounting + audit concept material"},
+                    {"title": "EPFO — Official site", "url": "https://www.epfindia.gov.in", "note": "Acts, schemes, annual reports — primary source"},
+                ],
+            },
+            {
+                "subject": "Polity, Governance, Economy, Culture",
+                "youtube": [
+                    {"title": "Drishti IAS — GS + polity/economy", "url": "https://www.youtube.com/c/DrishtiIASvideos", "note": "Free polity, economy, culture lectures"},
+                ],
+                "websites": [
+                    {"title": "PRS India — Laws & policy research", "url": "https://prsindia.org", "note": "Free bills, acts and policy briefs for governance"},
+                    {"title": "PIB — Official releases", "url": "https://pib.gov.in", "note": "Schemes, indices and economy updates"},
+                ],
+            },
+            {
+                "subject": "Current Affairs + English, Maths, Reasoning",
+                "youtube": [
+                    {"title": "Drishti IAS — Current affairs", "url": "https://www.youtube.com/c/DrishtiIASvideos", "note": "Free daily CA + editorial analysis"},
+                    {"title": "Free Jobs Information", "url": "https://www.youtube.com/@freejobsinformation", "note": "Job + exam update videos"},
+                ],
+                "websites": [
+                    {"title": "AffairsCloud — Daily CA + quizzes", "url": "https://www.affairscloud.com", "note": "Free daily current affairs with MCQs"},
+                    {"title": "UPSC — PYQs & notifications", "url": "https://upsc.gov.in", "note": "Official EPFO papers, syllabus, notices"},
+                ],
+            },
         ],
     },
 ]

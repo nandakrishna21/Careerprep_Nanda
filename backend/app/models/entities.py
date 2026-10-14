@@ -372,6 +372,7 @@ class MyJob(Base):
     exam_pattern: Mapped[list] = mapped_column(JSON, default=list)
     strategy: Mapped[str] = mapped_column(Text, default="")
     preparation_plan: Mapped[list] = mapped_column(JSON, default=list)
+    resources: Mapped[list] = mapped_column(JSON, default=list)
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

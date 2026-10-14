@@ -26,6 +26,7 @@ class MyJobCreate(BaseModel):
     exam_pattern: list = Field(default_factory=list)
     strategy: str = ""
     preparation_plan: list = Field(default_factory=list)
+    resources: list = Field(default_factory=list)
     notes: str = ""
 
 
@@ -45,4 +46,5 @@ class MyJobUpdate(BaseModel):
     exam_pattern: list | None = None
     strategy: str | None = None
     preparation_plan: list | None = None
+    resources: list | None = None
     notes: str | None = None

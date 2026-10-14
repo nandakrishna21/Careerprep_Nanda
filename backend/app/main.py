@@ -31,6 +31,7 @@ from app.models import Profile, User
 from app.services import achievements
 from app.services.email_otp import ensure_user_columns
 from app.services.job_taxonomy import backfill_jobs
+from app.services.myjobs_upkeep import ensure_myjob_columns
 
 
 @asynccontextmanager
@@ -41,6 +42,8 @@ async def lifespan(_: FastAPI):
     backfill_jobs(engine)
     # Email verification arrived later: add the flag and grandfather old accounts.
     ensure_user_columns(engine)
+    # My Jobs List gained the free-resources column after launch.
+    ensure_myjob_columns(engine)
     db = SessionLocal()
     try:
         admin_email = settings.admin_email.strip().lower()

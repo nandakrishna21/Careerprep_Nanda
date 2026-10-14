@@ -31,6 +31,7 @@ def _out(row: MyJob, job: Job | None = None) -> dict:
         "exam_pattern": list(row.exam_pattern or []),
         "strategy": row.strategy or "",
         "preparation_plan": list(row.preparation_plan or []),
+        "resources": list(getattr(row, "resources", None) or []),
         "notes": row.notes or "",
         "created_at": row.created_at,
         "updated_at": row.updated_at,
@@ -58,6 +59,7 @@ def list_my_job_templates(user: CurrentUser) -> dict:
             "role_name": t["role_name"],
             "sections": len(t.get("syllabus", [])),
             "phases": len(t.get("preparation_plan", [])),
+            "resource_groups": len(t.get("resources", [])),
         }
         for t in myjobs_templates.TEMPLATES
     ]
@@ -123,6 +125,7 @@ def create_my_job(payload: MyJobCreate, user: CurrentUser, db: DbSession) -> dic
         exam_pattern=list(payload.exam_pattern or []),
         strategy=payload.strategy or "",
         preparation_plan=list(payload.preparation_plan or []),
+        resources=list(payload.resources or []),
         notes=payload.notes or "",
     )
     db.add(row)
@@ -157,12 +160,38 @@ def create_my_job_from_template(key: str, user: CurrentUser, db: DbSession) -> d
         exam_pattern=list(tpl.get("exam_pattern", [])),
         strategy=tpl.get("strategy", ""),
         preparation_plan=list(tpl.get("preparation_plan", [])),
+        resources=list(tpl.get("resources", [])),
         notes="",
     )
     db.add(row)
     db.commit()
     db.refresh(row)
     return _out(row, None)
+
+
+@router.post("/{my_job_id}/refresh-template")
+def refresh_my_job_from_template(my_job_id: int, user: CurrentUser, db: DbSession) -> dict:
+    """Pull the latest syllabus/pattern/strategy/plan/resources from the template.
+
+    Personal fields (status, dates, notes, links) are preserved — only the
+    study material is refreshed. Used when templates gain new content (e.g.
+    free YouTube/practice links) after the job was already added.
+    """
+    row = _get_owned(db, user, my_job_id)
+    if not row.template_key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This job was not added from a template")
+    tpl = myjobs_templates.get_template(row.template_key)
+    if tpl is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
+    row.syllabus = list(tpl.get("syllabus", []))
+    row.exam_pattern = list(tpl.get("exam_pattern", []))
+    row.strategy = tpl.get("strategy", "")
+    row.preparation_plan = list(tpl.get("preparation_plan", []))
+    row.resources = list(tpl.get("resources", []))
+    db.commit()
+    db.refresh(row)
+    job = db.get(Job, row.job_id) if row.job_id else None
+    return _out(row, job)
 
 
 @router.put("/{my_job_id}")

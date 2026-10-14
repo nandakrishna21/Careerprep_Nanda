@@ -9,12 +9,15 @@ import {
   ClipboardList,
   ExternalLink,
   FileText,
+  Globe,
   Map,
   Plus,
+  RefreshCw,
   Search,
   Target,
   Trash2,
   X,
+  Youtube,
 } from 'lucide-react';
 import { errorMessage, get, post, put, del } from '../../lib/api';
 import type { MyJob, MyJobTemplateCard } from '../../lib/types';
@@ -22,7 +25,7 @@ import { Badge, Button, Card, EmptyState, Input, Spinner, Textarea } from '../..
 import { PageHeader } from '../../components/SectionHeader';
 import { formatDate } from '../../components/helpers';
 
-type TabKey = 'overview' | 'syllabus' | 'pattern' | 'strategy' | 'plan' | 'notes';
+type TabKey = 'overview' | 'syllabus' | 'pattern' | 'strategy' | 'plan' | 'resources' | 'notes';
 type StatusFilter = 'all' | MyJob['status'];
 
 const STATUS_ORDER: MyJob['status'][] = [
@@ -51,6 +54,7 @@ const TABS: { key: TabKey; label: string; icon: typeof BookOpen }[] = [
   { key: 'pattern', label: 'Exam Pattern', icon: FileText },
   { key: 'strategy', label: 'Strategy', icon: Target },
   { key: 'plan', label: 'Preparation', icon: Map },
+  { key: 'resources', label: 'Free Resources', icon: Youtube },
   { key: 'notes', label: 'My Notes', icon: ClipboardList },
 ];
 
@@ -66,6 +70,7 @@ export default function MyJobsList() {
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<MyJob | null>(null);
   const [deleting, setDeleting] = useState<MyJob | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -138,6 +143,20 @@ export default function MyJobsList() {
     }
   };
 
+  const syncLatest = async () => {
+    if (!selected?.template_key || syncing) return;
+    setSyncing(true);
+    try {
+      const updated = await post<MyJob>(`/my-jobs/${selected.id}/refresh-template`, {});
+      setItems((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
+      toast.success('Synced latest syllabus, plan and free resources');
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const removeJob = async () => {
     if (!deleting) return;
     try {
@@ -156,7 +175,7 @@ export default function MyJobsList() {
     <div className="mx-auto max-w-7xl space-y-6">
       <PageHeader
         title="My Jobs List"
-        subtitle="Jobs you have applied for — with syllabus, exam pattern, strategy and preparation plan in one place."
+        subtitle="Jobs you have applied for — with syllabus, exam pattern, strategy, preparation plan and free resources in one place."
         actions={
           <Button onClick={() => setShowAdd(true)}>
             <Plus className="h-4 w-4" /> Add job
@@ -189,7 +208,7 @@ export default function MyJobsList() {
         <Card className="space-y-3">
           <div>
             <h2 className="font-bold text-slate-900 dark:text-white">Starter pack — your applied roles</h2>
-            <p className="text-sm text-slate-500">One-click add with full syllabus, strategy and preparation plan.</p>
+            <p className="text-sm text-slate-500">One-click add with full syllabus, strategy, preparation plan and free YouTube + practice links.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {templates.map((t) => {
@@ -277,6 +296,11 @@ export default function MyJobsList() {
                     <p className="mt-0.5 text-sm text-slate-500">{selected.organization}{selected.role_name ? ` · ${selected.role_name}` : ''}</p>
                   </div>
                   <div className="flex gap-2">
+                    {selected.template_key && (
+                      <Button variant="outline" onClick={() => void syncLatest()} loading={syncing} title="Pull the latest syllabus, plan and free resources">
+                        <RefreshCw className="h-4 w-4" /> Sync latest
+                      </Button>
+                    )}
                     <Button variant="outline" onClick={() => setEditing(selected)}>Edit</Button>
                     <Button variant="outline" onClick={() => setDeleting(selected)} aria-label="Remove job"><Trash2 className="h-4 w-4" /></Button>
                   </div>
@@ -310,6 +334,7 @@ export default function MyJobsList() {
                 {tab === 'pattern' && <PatternTab job={selected} />}
                 {tab === 'strategy' && <StrategyTab job={selected} />}
                 {tab === 'plan' && <PlanTab job={selected} />}
+                {tab === 'resources' && <ResourcesTab job={selected} />}
                 {tab === 'notes' && <NotesTab job={selected} onSaved={(u) => setItems((prev) => prev.map((j) => (j.id === u.id ? u : j)))} />}
               </Card>
             </div>
@@ -353,11 +378,12 @@ function OverviewTab({ job }: { job: MyJob }) {
           </div>
         ))}
       </dl>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: `${job.syllabus.length} syllabus sections`, icon: BookOpen },
           { label: `${job.exam_pattern.length} exam rows`, icon: FileText },
           { label: `${job.preparation_plan.length} prep phases`, icon: Map },
+          { label: `${(job.resources ?? []).length} resource groups`, icon: Youtube },
         ].map((s) => (
           <div key={s.label} className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300">
             <s.icon className="h-4 w-4 text-brand-500" /> {s.label}
@@ -444,6 +470,70 @@ function PlanTab({ job }: { job: MyJob }) {
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ResourcesTab({ job }: { job: MyJob }) {
+  const groups = job.resources ?? [];
+  if (!groups.length)
+    return (
+      <p className="text-sm text-slate-400">
+        No free resources yet. {job.template_key ? 'Tap “Sync latest” above to pull the newest YouTube channels and practice sites.' : 'Free YouTube and practice links appear here for template jobs.'}
+      </p>
+    );
+  return (
+    <div className="space-y-5">
+      <p className="text-xs text-slate-400">100% free — YouTube classes and practice sites mapped to each syllabus subject. All links open in a new tab.</p>
+      {groups.map((g, i) => (
+        <div key={i}>
+          <h3 className="font-bold text-slate-900 dark:text-white">{i + 1}. {g.subject}</h3>
+          {(g.youtube?.length ?? 0) > 0 && (
+            <div className="mt-2">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-rose-500">
+                <Youtube className="h-3.5 w-3.5" /> YouTube — free classes
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(g.youtube ?? []).map((r, j) => (
+                  <a key={j} href={r.url} target="_blank" rel="noopener noreferrer"
+                    className="group flex items-start gap-3 rounded-xl border border-slate-200 p-3 transition hover:-translate-y-0.5 hover:border-rose-300 dark:border-slate-700 dark:hover:border-rose-500/50">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-600 text-white">
+                      <Youtube className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-bold text-slate-900 group-hover:text-rose-600 dark:text-white">{r.title}</span>
+                      {r.note && <span className="mt-0.5 block text-xs leading-snug text-slate-500 dark:text-slate-400">{r.note}</span>}
+                      <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">Watch free <ExternalLink className="h-3 w-3" /></span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+          {(g.websites?.length ?? 0) > 0 && (
+            <div className="mt-2">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-500">
+                <Globe className="h-3.5 w-3.5" /> Websites — free practice
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(g.websites ?? []).map((r, j) => (
+                  <a key={j} href={r.url} target="_blank" rel="noopener noreferrer"
+                    className="group flex items-start gap-3 rounded-xl border border-slate-200 p-3 transition hover:-translate-y-0.5 hover:border-brand-300 dark:border-slate-700 dark:hover:border-brand-500/50">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">
+                      <Globe className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-bold text-slate-900 group-hover:text-brand-600 dark:text-white">{r.title}</span>
+                      {r.note && <span className="mt-0.5 block text-xs leading-snug text-slate-500 dark:text-slate-400">{r.note}</span>}
+                      <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-brand-600">Practise free <ExternalLink className="h-3 w-3" /></span>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       ))}

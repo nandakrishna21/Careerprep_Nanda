@@ -203,6 +203,18 @@ export interface MyJobPrepPhase {
   tasks?: string[];
 }
 
+export interface MyJobResourceLink {
+  title: string;
+  url: string;
+  note?: string;
+}
+
+export interface MyJobResourceGroup {
+  subject: string;
+  youtube?: MyJobResourceLink[];
+  websites?: MyJobResourceLink[];
+}
+
 export interface MyJob {
   id: number;
   job_id: number | null;
@@ -220,6 +232,7 @@ export interface MyJob {
   exam_pattern: MyJobPatternRow[];
   strategy: string;
   preparation_plan: MyJobPrepPhase[];
+  resources: MyJobResourceGroup[];
   notes: string;
   created_at: string;
   updated_at: string;
