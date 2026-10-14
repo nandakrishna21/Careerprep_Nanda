@@ -8,7 +8,6 @@ import {
   ExternalLink,
   Flame,
   GraduationCap,
-  Instagram,
   LayoutDashboard,
   LogOut,
   Map,
@@ -29,7 +28,6 @@ import { Avatar, ThemeToggle } from '../components/ui';
 
 const YOUTUBE_CHANNEL = 'https://www.youtube.com/@freejobsinformation';
 const VTHETECHEE_CHANNEL = 'https://www.youtube.com/@VtheTechee';
-const INSTAGRAM_DMS = 'https://www.instagram.com/direct/inbox/';
 const DSA_COURSE = 'https://getsdeready.com/courses/dsa/lesson/convert-a-number-to-hexadecimal/?page_tab=overview';
 const DSA_YOUTUBE = 'https://www.youtube.com/@CodeHelp';
 const DSA_PLAYLIST_TELUGU = 'https://www.youtube.com/playlist?list=PLjzLBp9HHZWiJrhfJzTAEbwdpQIfUXtwP';
@@ -41,6 +39,7 @@ type NavItem = {
   to?: string;
   href?: string;
   adminOnly?: boolean;
+  superadminOnly?: boolean;
 };
 
 type NavGroup = { label: string; items: NavItem[] };
@@ -52,6 +51,12 @@ const nav: NavGroup[] = [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
       { to: '/jobs', label: 'Jobs & Opportunities', icon: Briefcase },
+    ],
+  },
+  {
+    label: 'Super Admin',
+    items: [
+      { to: '/my-jobs', label: 'My Jobs List', icon: Briefcase, superadminOnly: true },
     ],
   },
   {
@@ -85,12 +90,6 @@ const nav: NavGroup[] = [
       items: [
         { href: YOUTUBE_CHANNEL, label: 'Free Jobs Information', icon: Youtube },
         { href: VTHETECHEE_CHANNEL, label: 'V the Techee', icon: Youtube },
-      ],
-    },
-    {
-      label: 'Instagram',
-      items: [
-        { href: INSTAGRAM_DMS, label: 'Open Instagram DMs', icon: Instagram },
       ],
     },
   {
@@ -145,7 +144,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-3 pb-6">
           {nav.map((group) => {
             const items = group.items.filter(
-              (i) => !i.adminOnly || user?.role === 'admin' || user?.role === 'superadmin'
+              (i) =>
+                (!i.adminOnly || user?.role === 'admin' || user?.role === 'superadmin') &&
+                (!i.superadminOnly || user?.role === 'superadmin')
             );
             if (!items.length) return null;
             return (

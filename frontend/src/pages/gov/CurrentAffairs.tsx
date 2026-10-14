@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowRight, CalendarDays, Newspaper } from 'lucide-react';
-import { errorMessage, get } from '../../lib/api';
+import { ArrowRight, CalendarDays, Newspaper, RefreshCw } from 'lucide-react';
+import { errorMessage, get, post } from '../../lib/api';
 import type { CurrentAffair } from '../../lib/types';
 import { Badge, Card, EmptyState, Spinner } from '../../components/ui';
 import { PageHeader, SectionHeader } from '../../components/SectionHeader';
@@ -16,19 +16,48 @@ const PERIODS = [
 
 type Period = (typeof PERIODS)[number]['key'];
 
+interface SyncStatus {
+  today: string;
+  today_slug: string;
+  today_exists: boolean;
+  latest_date: string | null;
+  counts: Record<string, number>;
+  cooldown_remaining_seconds: number;
+}
+
 export default function CurrentAffairs() {
   const [period, setPeriod] = useState<Period>('daily');
   const [items, setItems] = useState<CurrentAffair[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<SyncStatus | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const loadList = useCallback(async (p: Period, signal?: AbortSignal) => {
+    const data = await get<unknown>('/current-affairs', { period: p }, { signal });
+    return toItems<CurrentAffair>(data);
+  }, []);
+
+  const loadStatus = useCallback(async () => {
+    try {
+      const s = await get<SyncStatus>('/current-affairs/sync/status');
+      setStatus(s);
+      return s;
+    } catch {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     let alive = true;
     (async () => {
       setLoading(true);
       try {
-        const data = await get<unknown>('/current-affairs', { period });
-        if (alive) setItems(toItems<CurrentAffair>(data));
+        const [list] = await Promise.all([loadList(period, controller.signal), loadStatus()]);
+        if (alive) setItems(list);
       } catch (err) {
+        if (controller.signal.aborted) return;
         if (alive) {
           toast.error(errorMessage(err));
           setItems([]);
@@ -39,14 +68,80 @@ export default function CurrentAffairs() {
     })();
     return () => {
       alive = false;
+      controller.abort();
     };
-  }, [period]);
+  }, [period, loadList, loadStatus]);
+
+  useEffect(
+    () => () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    },
+    [],
+  );
+
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const res = await post<{ started: boolean; reason?: string }>('/current-affairs/refresh', {});
+      if (!res.started) {
+        toast(res.reason ?? 'Refresh is on cooldown — try again shortly.');
+        setRefreshing(false);
+        return;
+      }
+      toast.success('Fetching today’s headlines — updating shortly…');
+      // Poll status until today's edition lands (max ~90s), then reload list.
+      let tries = 0;
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        tries += 1;
+        const s = await loadStatus();
+        if (s?.today_exists) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          try {
+            const list = await loadList(period);
+            setItems(list);
+            toast.success('Current affairs are up to date.');
+          } catch {
+            /* keep old list */
+          }
+          setRefreshing(false);
+        } else if (tries >= 18) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setRefreshing(false);
+          toast('Still updating — check back in a minute.');
+        }
+      }, 5000);
+    } catch (err) {
+      toast.error(errorMessage(err));
+      setRefreshing(false);
+    }
+  };
+
+  const freshness = status
+    ? status.today_exists
+      ? `Updated today · ${formatDate(status.today)}`
+      : status.latest_date
+        ? `Latest: ${formatDate(status.latest_date)} — tap Refresh for today`
+        : 'No editions yet'
+    : undefined;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <PageHeader
         title="Current Affairs"
-        subtitle="Stay updated with daily, weekly and monthly round-ups â€” complete with revision notes and AI-powered MCQs."
+        subtitle="Stay updated with daily, weekly and monthly round-ups — complete with revision notes and AI-powered MCQs."
+        actions={
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Updating…' : 'Refresh today'}
+          </button>
+        }
       />
 
       <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Period">
@@ -66,6 +161,9 @@ export default function CurrentAffairs() {
             {p.label}
           </button>
         ))}
+        {freshness && (
+          <span className="ml-auto text-xs font-medium text-slate-400">{freshness}</span>
+        )}
       </div>
 
       <SectionHeader
@@ -88,6 +186,9 @@ export default function CurrentAffairs() {
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400">
                     <CalendarDays className="h-3.5 w-3.5" /> {formatDate(ca.date)}
                   </span>
+                  {status?.today_slug === ca.slug && (
+                    <Badge color="green">Today</Badge>
+                  )}
                 </div>
                 <h3 className="mt-2 font-bold text-slate-900 dark:text-white">{ca.title}</h3>
                 {ca.summary && (
@@ -108,15 +209,24 @@ export default function CurrentAffairs() {
       ) : (
         <EmptyState
           title={`No ${period} current affairs yet`}
-          description="New editions are published regularly â€” check back soon or try another period."
+          description="Tap Refresh today to fetch the latest headlines from free sources, or try another period."
           action={
-            <button
-              type="button"
-              onClick={() => setPeriod(period === 'daily' ? 'weekly' : 'daily')}
-              className="text-sm font-semibold text-brand-600 hover:underline dark:text-brand-400"
-            >
-              Try another period
-            </button>
+            <div className="mt-2 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={handleRefresh}
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+              >
+                <RefreshCw className="h-4 w-4" /> Refresh today
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriod(period === 'daily' ? 'weekly' : 'daily')}
+                className="text-sm font-semibold text-brand-600 hover:underline dark:text-brand-400"
+              >
+                Try another period
+              </button>
+            </div>
           }
         />
       )}

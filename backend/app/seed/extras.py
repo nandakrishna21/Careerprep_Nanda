@@ -204,7 +204,46 @@ def _build_pyq_paper_specs() -> list[dict]:
     return specs
 
 
-PYQ_SPECS.extend(_build_pyq_paper_specs())
+def _build_pyq_difficulty_variants(base_specs: list[dict]) -> list[dict]:
+    """Ensure every exam × year has a paper at every difficulty.
+
+    The canonical paper (``pyq-<exam>-<year>``) keeps its plan difficulty so
+    existing databases stay stable. For the two missing difficulties we add
+    ``pyq-<exam>-<year>-<difficulty>`` variants reusing the same topic mix —
+    the quiz slug feeds the sampler seed, so each variant still gets a
+    distinct 15-question set. This guarantees no valid
+    exam + difficulty + year combo ever returns 0 results.
+    """
+    variants: list[dict] = []
+    all_difficulties = ("beginner", "intermediate", "advanced")
+    for base in base_specs:
+        base_difficulty = base["difficulty"]
+        for difficulty in all_difficulties:
+            if difficulty == base_difficulty:
+                continue
+            exam_slug = base["exam_slug"]
+            year = base["year"]
+            # Recover display name from the plan (base title is "<Name> <Year> PYQs").
+            plan_name = PYQ_PAPER_PLAN[exam_slug][0]
+            variants.append(
+                {
+                    "slug": f"pyq-{exam_slug}-{year}-{difficulty}",
+                    "title": f"{plan_name} {year} PYQs ({difficulty.title()})",
+                    "exam_slug": exam_slug,
+                    "year": year,
+                    "difficulty": difficulty,
+                    "negative": base["negative"],
+                    "count": 15,
+                    # Copy so later mutation can't alias the base spec.
+                    "mix": list(base["mix"]),
+                }
+            )
+    return variants
+
+
+_PYQ_PAPERS = _build_pyq_paper_specs()
+PYQ_SPECS.extend(_PYQ_PAPERS)
+PYQ_SPECS.extend(_build_pyq_difficulty_variants(_PYQ_PAPERS))
 
 CURRENT_AFFAIRS: list[dict] = [
     {

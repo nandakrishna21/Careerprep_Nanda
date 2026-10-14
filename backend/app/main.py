@@ -17,6 +17,7 @@ from app.api import (
     government,
     jobs,
     leaderboard,
+    myjobs,
     progress,
     profile,
     quizzes,
@@ -102,6 +103,7 @@ app.include_router(ai.router, prefix="/api/ai")
 app.include_router(ai_tools.router, prefix="/api/ai")
 app.include_router(resumes.router, prefix="/api/resumes")
 app.include_router(jobs.router, prefix="/api/jobs")
+app.include_router(myjobs.router, prefix="/api/my-jobs")
 app.include_router(progress.router, prefix="/api/progress")
 app.include_router(leaderboard.router, prefix="/api")
 app.include_router(search.router, prefix="/api")

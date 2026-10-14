@@ -15,29 +15,75 @@ interface AuthState {
   refreshProfile: () => Promise<void>;
 }
 
+function readCachedUser(): { user: User | null; profile: Profile | null } {
+  try {
+    const rawUser = localStorage.getItem('cp_user');
+    const rawProfile = localStorage.getItem('cp_profile');
+    return {
+      user: rawUser ? (JSON.parse(rawUser) as User) : null,
+      profile: rawProfile ? (JSON.parse(rawProfile) as Profile) : null,
+    };
+  } catch {
+    return { user: null, profile: null };
+  }
+}
+
+function writeCache(user: User | null, profile: Profile | null) {
+  try {
+    if (user) localStorage.setItem('cp_user', JSON.stringify(user));
+    else localStorage.removeItem('cp_user');
+    if (profile) localStorage.setItem('cp_profile', JSON.stringify(profile));
+    else localStorage.removeItem('cp_profile');
+  } catch {
+    /* storage full / private mode — ignore, network is source of truth */
+  }
+}
+
+const initialToken =
+  typeof localStorage !== 'undefined' ? localStorage.getItem('cp_token') : null;
+const initialCache =
+  typeof localStorage !== 'undefined'
+    ? readCachedUser()
+    : { user: null, profile: null };
+
 export const useAuth = create<AuthState>((set, get) => ({
-  token: localStorage.getItem('cp_token'),
-  user: null,
-  profile: null,
+  token: initialToken,
+  // Render cached user instantly so refresh paints UI without waiting for /auth/me.
+  user: initialCache.user,
+  profile: initialCache.profile,
   hydrated: false,
 
   setSession: (token, user) => {
     localStorage.setItem('cp_token', token);
+    writeCache(user, get().profile);
     set({ token, user });
   },
 
   hydrate: async () => {
-    const token = get().token;
+    const token = get().token ?? localStorage.getItem('cp_token');
     if (!token) {
-      set({ hydrated: true });
+      set({ token: null, hydrated: true });
       return;
     }
+    // Fast path: mark hydrated immediately from cache so App renders instantly.
+    // Then refresh in background — refresh feels instant even on slow network.
+    const cached = readCachedUser();
+    set({ token, user: cached.user, profile: cached.profile, hydrated: true });
     try {
       const data = await apiGet<{ user: User; profile: Profile }>('/auth/me');
-      set({ user: data.user, profile: data.profile, hydrated: true });
+      writeCache(data.user, data.profile);
+      // Only update if token didn't change (logout during fetch).
+      if (get().token === token) {
+        set({ user: data.user, profile: data.profile });
+      }
     } catch {
-      localStorage.removeItem('cp_token');
-      set({ token: null, user: null, profile: null, hydrated: true });
+      // Token invalid — clear session. Don't loop: api interceptor already
+      // redirects to /login on 401 for non-auth calls.
+      if (get().token === token) {
+        localStorage.removeItem('cp_token');
+        writeCache(null, null);
+        set({ token: null, user: null, profile: null });
+      }
     }
   },
 
@@ -66,6 +112,7 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   logout: () => {
     localStorage.removeItem('cp_token');
+    writeCache(null, null);
     set({ token: null, user: null, profile: null });
   },
 
@@ -73,6 +120,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (!get().token) return;
     try {
       const data = await apiGet<{ user: User; profile: Profile }>('/auth/me');
+      writeCache(data.user, data.profile);
       set({ user: data.user, profile: data.profile });
     } catch {
       /* ignore */

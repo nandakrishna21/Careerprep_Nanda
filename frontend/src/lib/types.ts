@@ -182,6 +182,59 @@ export interface Job {
   save_status?: string;
 }
 
+export interface MyJobSyllabusSection {
+  section: string;
+  topics: string[];
+}
+
+export interface MyJobPatternRow {
+  section: string;
+  questions?: number;
+  marks?: number | string;
+  duration?: string;
+  medium?: string;
+  note?: string;
+}
+
+export interface MyJobPrepPhase {
+  phase: string;
+  weeks?: string;
+  focus?: string[];
+  tasks?: string[];
+}
+
+export interface MyJob {
+  id: number;
+  job_id: number | null;
+  template_key: string | null;
+  title: string;
+  organization: string;
+  role_name: string;
+  status: 'wishlist' | 'applied' | 'preparing' | 'exam' | 'interview' | 'selected' | 'rejected';
+  applied_date: string | null;
+  exam_date: string | null;
+  deadline: string | null;
+  notification_link: string;
+  apply_link: string;
+  syllabus: MyJobSyllabusSection[];
+  exam_pattern: MyJobPatternRow[];
+  strategy: string;
+  preparation_plan: MyJobPrepPhase[];
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  job?: { id: number; title: string; company: string } | null;
+}
+
+export interface MyJobTemplateCard {
+  template_key: string;
+  title: string;
+  organization: string;
+  role_name: string;
+  sections: number;
+  phases: number;
+}
+
 export interface Paged<T> {
   items: T[];
   total: number;

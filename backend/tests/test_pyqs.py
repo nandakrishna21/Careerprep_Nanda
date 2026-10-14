@@ -5,10 +5,17 @@ def test_pyq_paper_specs_cover_every_exam_year():
     from app.seed import extras
 
     papers = [spec for spec in extras.PYQ_SPECS if "mix" in spec]
-    assert len(papers) == 13 * 7
+    # Every exam x year now has beginner + intermediate + advanced variants,
+    # so no valid filter combo returns 0 results.
+    assert len(papers) == 13 * 7 * 3
+    triples = {(spec["exam_slug"], spec["year"], spec["difficulty"]) for spec in papers}
+    assert len(triples) == 13 * 7 * 3
     pairs = {(spec["exam_slug"], spec["year"]) for spec in papers}
     assert len(pairs) == 13 * 7
     assert {year for _, year in pairs} == {2020, 2021, 2022, 2023, 2024, 2025, 2026}
+    for exam_slug, year in pairs:
+        difficulties = {spec["difficulty"] for spec in papers if spec["exam_slug"] == exam_slug and spec["year"] == year}
+        assert difficulties == {"beginner", "intermediate", "advanced"}, (exam_slug, year, difficulties)
     slugs = [spec["slug"] for spec in extras.PYQ_SPECS]
     assert len(set(slugs)) == len(slugs)
     for spec in papers:
@@ -68,3 +75,25 @@ def test_pyqs_year_filter(client, db):
     combined = client.get("/api/pyqs?exam=ssc-cgl&year=2025").json()
     assert combined, "expected SSC CGL 2025 papers"
     assert all(item["meta"].get("year") == 2025 for item in combined)
+
+
+def test_pyqs_every_exam_year_difficulty_combo_has_data():
+    """Regression test for '0 question sets found' on valid combos.
+
+    Previously SSC CGL papers were intermediate-only, so
+    exam=ssc-cgl + difficulty=beginner + year=2025 returned 0 rows.
+    Every exam x year must now have all three difficulties.
+    """
+    from app.seed import extras
+
+    for exam_slug in extras.PYQ_PAPER_PLAN:
+        for year in extras.PYQ_YEARS:
+            for difficulty in ("beginner", "intermediate", "advanced"):
+                matches = [
+                    spec
+                    for spec in extras.PYQ_SPECS
+                    if spec.get("exam_slug") == exam_slug
+                    and spec.get("year") == year
+                    and spec.get("difficulty") == difficulty
+                ]
+                assert matches, f"missing PYQ for {exam_slug} {year} {difficulty}"

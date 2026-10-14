@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.core.security import CurrentUser, DbSession
 from app.models import Quiz, QuizAttempt, UserAchievement
@@ -12,8 +13,13 @@ router = APIRouter(tags=["quiz"])
 
 
 def _get_published_quiz(db, quiz_id: int) -> Quiz:
-    quiz = db.get(Quiz, quiz_id)
-    if quiz is None or not quiz.is_published:
+    # Eager-load relations to avoid N+1 on quiz detail refresh.
+    quiz = db.scalar(
+        select(Quiz)
+        .options(selectinload(Quiz.topic), selectinload(Quiz.exam))
+        .where(Quiz.id == quiz_id, Quiz.is_published.is_(True))
+    )
+    if quiz is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found")
     return quiz
 

@@ -166,7 +166,16 @@ def _seed_lesson(db: Session, topic: Topic, lesson_spec: dict) -> None:
     db.add(Lesson(topic_id=topic.id, title=lesson_spec["title"], order=1, content=content))
 
 
+def _existing_quiz_slug_set(db: Session) -> set[str]:
+    """One query instead of hundreds — makes re-seed (every backend boot) instant."""
+    try:
+        return set(db.scalars(select(Quiz.slug)).all())
+    except Exception:
+        return set()
+
+
 def _seed_courses(db: Session) -> None:
+    existing_quiz_slugs = _existing_quiz_slug_set(db)
     for spec in gov.GOV_COURSES:
         course = _existing_slug(db, Course, spec["slug"])
         if course is None:
@@ -191,11 +200,15 @@ def _seed_courses(db: Session) -> None:
                 db.flush()
             _seed_lesson(db, topic, gov.LESSONS[slug])
             for difficulty in DIFFICULTIES:
+                quiz_slug = f"{slug}-{difficulty}"
+                # Fast path: skip expensive question generation when already seeded.
+                if quiz_slug in existing_quiz_slugs:
+                    continue
                 questions = gov.questions_for(slug, difficulty)
                 _create_quiz(
                     db,
                     title=f"{title} — {difficulty.title()}",
-                    slug=f"{slug}-{difficulty}",
+                    slug=quiz_slug,
                     quiz_type="topic",
                     questions=questions,
                     difficulty=difficulty,
@@ -204,6 +217,7 @@ def _seed_courses(db: Session) -> None:
                     default_tags=[title],
                     topic_id=topic.id,
                 )
+                existing_quiz_slugs.add(quiz_slug)
 
     for order, spec in enumerate(it.IT_COURSES, start=1):
         course = _existing_slug(db, Course, spec["slug"])
@@ -228,6 +242,9 @@ def _seed_courses(db: Session) -> None:
                 db.add(topic)
                 db.flush()
             _seed_lesson(db, topic, it.IT_LESSONS[slug])
+            # Fast path: skip when already seeded.
+            if slug in existing_quiz_slugs:
+                continue
             questions = it.questions_for(slug, difficulty)
             _create_quiz(
                 db,
@@ -241,6 +258,7 @@ def _seed_courses(db: Session) -> None:
                 default_tags=[title],
                 topic_id=topic.id,
             )
+            existing_quiz_slugs.add(slug)
 
     for path_index, path in enumerate(CAREER_PATHS):
         course = _existing_slug(db, Course, path["slug"])
@@ -271,6 +289,9 @@ def _seed_courses(db: Session) -> None:
                 db.add(topic)
                 db.flush()
             _seed_lesson(db, topic, spec["lesson"])
+            # Fast path: skip when already seeded.
+            if spec["slug"] in existing_quiz_slugs:
+                continue
             _create_quiz(
                 db,
                 title=f"{spec['title']} Quiz",
@@ -283,6 +304,7 @@ def _seed_courses(db: Session) -> None:
                 default_tags=[spec["title"]],
                 topic_id=topic.id,
             )
+            existing_quiz_slugs.add(spec["slug"])
 
 
 def _seed_exams(db: Session) -> dict[str, int]:
@@ -305,7 +327,14 @@ def _seed_exams(db: Session) -> dict[str, int]:
 
 
 def _seed_pyqs(db: Session, exam_ids: dict[str, int]) -> None:
+    existing_quiz_slugs = _existing_quiz_slug_set(db)
     for spec in extras.PYQ_SPECS:
+        # Fast path: skip expensive question generation when already seeded.
+        # This is the biggest boot-time win now that every exam x year x level
+        # has a paper (273 papers). Previously we built all pools even for
+        # existing rows.
+        if spec["slug"] in existing_quiz_slugs:
+            continue
         topic_id = None
         default_tags: list[str] = []
         if "topic_slug" in spec:
@@ -329,6 +358,7 @@ def _seed_pyqs(db: Session, exam_ids: dict[str, int]) -> None:
             exam_id=exam_ids[spec["exam_slug"]],
             meta={"year": spec["year"], "exam": spec["exam_slug"]},
         )
+        existing_quiz_slugs.add(spec["slug"])
 
 
 def _seed_current_affairs(db: Session) -> None:
@@ -349,6 +379,13 @@ def _seed_current_affairs(db: Session) -> None:
             db.flush()
         ai_content = dict(row.ai_content or {})
         if not ai_content.get("quiz_id") and ai_content.get("mcqs"):
+            ca_slug = f"ca-{spec['slug']}"
+            if _existing_slug(db, Quiz, ca_slug) is not None:
+                # Quiz exists but link missing — repair link without rebuilding.
+                existing_quiz = _existing_slug(db, Quiz, ca_slug)
+                ai_content["quiz_id"] = existing_quiz.id
+                row.ai_content = ai_content
+                continue
             questions = [
                 {
                     "question_text": item["question"],
@@ -363,7 +400,7 @@ def _seed_current_affairs(db: Session) -> None:
             quiz = _create_quiz(
                 db,
                 title=f"Quiz — {spec['title']}",
-                slug=f"ca-{spec['slug']}",
+                slug=ca_slug,
                 quiz_type="current_affair",
                 questions=questions,
                 difficulty="intermediate",

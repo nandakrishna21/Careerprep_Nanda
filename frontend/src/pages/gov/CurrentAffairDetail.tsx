@@ -113,6 +113,37 @@ export default function CurrentAffairDetail() {
             <p className="text-sm text-slate-400">No article content available.</p>
           )}
         </div>
+        {Array.isArray((ai as { sources?: { label: string; url: string; title: string }[] })?.sources) &&
+          ((ai as { sources?: { label: string; url: string; title: string }[] }).sources?.length ?? 0) > 0 && (
+            <div className="mt-6 border-t border-slate-100 pt-4 dark:border-slate-800">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                Free sources · {((ai as { generated_from?: string }).generated_from ?? 'free-public-feeds').replace(/-/g, ' ')}
+              </p>
+              <ul className="flex flex-wrap gap-2">
+                {((ai as { sources: { label: string; url: string; title: string }[] }).sources ?? [])
+                  .slice(0, 10)
+                  .map((s, i) => (
+                    <li key={i}>
+                      {s.url ? (
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex max-w-[16rem] items-center gap-1.5 truncate rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
+                          title={s.title}
+                        >
+                          {s.label}
+                        </a>
+                      ) : (
+                        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          {s.label}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
         {typeof ai?.quiz_id === 'number' && (
           <div className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
             <LinkButton to={`/gov/quizzes/${ai.quiz_id}`}>

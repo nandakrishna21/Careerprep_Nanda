@@ -342,6 +342,43 @@ class SavedJob(Base):
     job: Mapped[Job] = relationship()
 
 
+class MyJob(Base):
+    """Personal applied-jobs tracker ("My Jobs List").
+
+    Each row belongs to one user (superadmin tracks their own applied
+    roles; every learner gets a private list too). Linked ``job_id`` is
+    optional so custom/off-board roles (UIICL AO, EPFO APFC, …) can be
+    tracked with full syllabus + strategy + preparation plan.
+    """
+
+    __tablename__ = "my_jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    job_id: Mapped[int | None] = mapped_column(
+        ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    template_key: Mapped[str | None] = mapped_column(String(60), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    organization: Mapped[str] = mapped_column(String(255), default="")
+    role_name: Mapped[str] = mapped_column(String(255), default="")
+    status: Mapped[str] = mapped_column(String(30), default="applied", index=True)
+    applied_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    exam_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notification_link: Mapped[str] = mapped_column(String(1000), default="")
+    apply_link: Mapped[str] = mapped_column(String(1000), default="")
+    syllabus: Mapped[list] = mapped_column(JSON, default=list)
+    exam_pattern: Mapped[list] = mapped_column(JSON, default=list)
+    strategy: Mapped[str] = mapped_column(Text, default="")
+    preparation_plan: Mapped[list] = mapped_column(JSON, default=list)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    job: Mapped[Job | None] = relationship()
+
+
 class Notification(Base):
     __tablename__ = "notifications"
 

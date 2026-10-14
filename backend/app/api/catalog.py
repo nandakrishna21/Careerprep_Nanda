@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.core.security import DbSession
 from app.models import Course, Exam, Lesson, Quiz, Topic
@@ -65,7 +66,9 @@ def get_course(slug: str, db: DbSession) -> dict:
 
 @router.get("/topics/{slug}")
 def get_topic(slug: str, db: DbSession) -> dict:
-    topic = db.scalar(select(Topic).where(Topic.slug == slug))
+    topic = db.scalar(
+        select(Topic).options(selectinload(Topic.course)).where(Topic.slug == slug)
+    )
     if topic is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Topic not found")
     course = topic.course
@@ -123,7 +126,10 @@ def get_exam(slug: str, db: DbSession) -> dict:
     if exam is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
     quizzes = db.scalars(
-        select(Quiz).where(Quiz.exam_id == exam.id, Quiz.is_published.is_(True)).order_by(Quiz.id)
+        select(Quiz)
+        .options(selectinload(Quiz.topic), selectinload(Quiz.exam))
+        .where(Quiz.exam_id == exam.id, Quiz.is_published.is_(True))
+        .order_by(Quiz.id)
     ).all()
     course_ids: set[int] = set()
     for quiz in quizzes:

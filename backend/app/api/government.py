@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import func, or_, select
+import secrets
+from datetime import date
 
-from app.core.security import AdminUser, DbSession
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, status
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import selectinload
+
+from app.core.config import settings
+from app.core.database import SessionLocal
+from app.core.security import AdminUser, CurrentUser, DbSession
 from app.models import CurrentAffair, Exam, MockTest, Question, Quiz, Topic, QuizAttempt
 from app.services.common import quiz_summary, unique_slug
 
@@ -85,7 +91,13 @@ def list_pyqs(
     difficulty: str | None = None,
     year: int | None = None,
 ) -> list[dict]:
-    stmt = select(Quiz).where(Quiz.quiz_type == "pyq", Quiz.is_published.is_(True))
+    # Eager-load exam/topic in 2 extra queries instead of N+1 (was 500+ queries
+    # for the full 273-paper bank, which made every PYQ refresh feel slow).
+    stmt = (
+        select(Quiz)
+        .options(selectinload(Quiz.exam), selectinload(Quiz.topic))
+        .where(Quiz.quiz_type == "pyq", Quiz.is_published.is_(True))
+    )
     if difficulty:
         stmt = stmt.where(Quiz.difficulty == difficulty)
     if exam:
@@ -102,7 +114,8 @@ def list_pyqs(
     quizzes = db.scalars(stmt).all()
     if year is not None:
         # The year lives in the JSON meta column; filter in Python so the query
-        # stays portable across SQLite and PostgreSQL.
+        # stays portable across SQLite and PostgreSQL. List is already in memory
+        # and eager-loaded, so this is cheap (no extra queries).
         quizzes = [
             quiz
             for quiz in quizzes
@@ -138,6 +151,90 @@ def list_current_affairs(db: DbSession, period: str | None = None) -> list[dict]
         }
         for row in rows
     ]
+
+
+@router.get("/current-affairs/sync/status")
+def current_affairs_sync_status(db: DbSession) -> dict:
+    """Freshness probe for the section header (today exists? latest date?).
+
+    Public + cheap (3 COUNTs) so the frontend can show
+    "Updated today" vs "Showing latest — tap Refresh".
+    """
+    from app.services import current_affairs_sync as ca_sync
+
+    return ca_sync.sync_status(db)
+
+
+def _run_ca_sync(day: date | None = None) -> dict:
+    from app.services import current_affairs_sync as ca_sync
+
+    db = SessionLocal()
+    try:
+        return ca_sync.sync_daily(db, day=day)
+    except Exception as exc:  # noqa: BLE001 - background failures belong in logs
+        print(f"[ca-sync] failed: {exc}")
+        return {"ok": False, "error": str(exc)}
+    finally:
+        db.close()
+
+
+@router.post("/current-affairs/sync")
+def sync_current_affairs_now(
+    admin: AdminUser, db: DbSession, background_tasks: BackgroundTasks, day: date | None = None, background: bool = False
+) -> dict:
+    """Admin: fetch free feeds now and upsert today's edition.
+
+    Blocking by default (returns the report). With ``?background=true`` the
+    fetch runs on a worker thread and the request returns instantly.
+    """
+    from app.services import current_affairs_sync as ca_sync
+
+    if background:
+        background_tasks.add_task(_run_ca_sync, day)
+        return {"started": True, "day": day.isoformat() if day else None}
+    try:
+        return ca_sync.sync_daily(db, day=day)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post("/current-affairs/refresh")
+def refresh_current_affairs(user: CurrentUser, background_tasks: BackgroundTasks) -> dict:
+    """Logged-in users can trigger a refresh (60s cooldown, runs in background).
+
+    Returns instantly; poll ``GET /current-affairs/sync/status`` until
+    ``today_exists`` is true, then reload the list.
+    """
+    from app.services import current_affairs_sync as ca_sync
+
+    remaining = ca_sync.cooldown_remaining()
+    if remaining > 0:
+        return {"started": False, "reason": f"cooldown — try again in {remaining:.0f}s", "cooldown_remaining_seconds": round(remaining, 1)}
+    background_tasks.add_task(_run_ca_sync)
+    return {"started": True}
+
+
+@router.post("/current-affairs/sync/scheduled")
+def scheduled_ca_sync(
+    background_tasks: BackgroundTasks,
+    token: str | None = None,
+    x_cron_token: str | None = Header(default=None),
+) -> dict:
+    """cron-job.org pings this daily ~6 AM IST; crawl runs in background.
+
+    Same ``CRON_SECRET`` as jobs — one secret for all scheduled syncs.
+    """
+    expected = settings.cron_secret
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Scheduled sync is not configured (CRON_SECRET missing).",
+        )
+    provided = x_cron_token or token or ""
+    if not secrets.compare_digest(provided, expected):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid cron token.")
+    background_tasks.add_task(_run_ca_sync)
+    return {"started": True}
 
 
 @router.get("/current-affairs/{slug}")

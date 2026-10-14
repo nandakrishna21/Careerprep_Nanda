@@ -36,8 +36,12 @@ export function errorMessage(err: unknown): string {
   return 'Something went wrong';
 }
 
-export async function get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
-  return (await api.get<T>(url, { params })).data;
+export async function get<T>(
+  url: string,
+  params?: Record<string, unknown>,
+  opts?: { signal?: AbortSignal },
+): Promise<T> {
+  return (await api.get<T>(url, { params, signal: opts?.signal })).data;
 }
 export async function post<T>(url: string, data?: unknown): Promise<T> {
   return (await api.post<T>(url, data)).data;

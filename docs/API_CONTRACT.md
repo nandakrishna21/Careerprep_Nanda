@@ -105,7 +105,11 @@ Password hashing: passlib bcrypt. JWT payload `{sub: str(user_id), role}`.
 - Submit mock via POST `/quizzes/{quiz_id}/attempt` (mock report additionally includes `section_analysis:[{name,attempted,correct,accuracy}]` and `improvement_suggestions:[str]`)
 - GET `/pyqs?exam=&topic=&difficulty=` → quiz list (`quiz_type='pyq'`, meta.year). Practice & exam mode both hit standard engine endpoints.
 - GET `/current-affairs?period=daily|weekly|monthly` → list `{id,title,slug,period,date,summary}`
-- GET `/current-affairs/{slug}` → detail incl. `ai_content` + linked quiz id if generated
+- GET `/current-affairs/{slug}` → detail incl. `ai_content` (`mcqs, short_questions, revision_notes, sources, quiz_id`) + linked quiz id if generated
+- GET `/current-affairs/sync/status` → `{today, today_slug, today_exists, latest_date, counts, cooldown_remaining_seconds}` (public freshness probe)
+- POST `/current-affairs/refresh` (login) → triggers daily free-feed sync in background (60s cooldown); poll status until `today_exists`, then reload list
+- POST `/current-affairs/sync` (admin, `?day=YYYY-MM-DD&background=true`) → fetch Inshorts + PIB + The Hindu (no keys) and upsert today's edition + quiz
+- POST `/current-affairs/sync/scheduled?token=` (cron, `CRON_SECRET`) → daily 06:00 IST cron-job.org ping, same as jobs 11:00 sync
 - POST `/current-affairs/{id}/generate-quiz` (admin) → creates quiz from ai_content.mcqs, returns quiz
 
 ## 6. IT module
@@ -133,6 +137,7 @@ Same catalog endpoints (courses category=it; courses with `career_path=true` for
 
 - GET `/jobs?type=government|it&category=&q=&page=` → paged `{items,total,page,page_size}` + each item `is_saved`
 - GET `/jobs/{id}`; POST `/jobs/{id}/save`; PATCH `/jobs/{id}/save` `{status}`; DELETE `/jobs/{id}/save`; GET `/jobs/saved`
+- My Jobs List (private per user, superadmin tracks applied roles): GET `/my-jobs?status=` → `{items,total}`; GET `/my-jobs/{id}`; POST `/my-jobs`; PUT `/my-jobs/{id}`; DELETE `/my-jobs/{id}`; GET `/my-jobs/templates` (UIICL AO Scale I + UPSC EPFO APFC with syllabus/strategy/plan); GET `/my-jobs/templates/{key}`; POST `/my-jobs/from-template/{key}` (idempotent). Frontend: `/my-jobs`.
 
 ## 10. Progress / Leaderboard / Gamification
 

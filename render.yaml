@@ -25,10 +25,12 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
-      # Shared secret for the daily 11 AM IST auto-sync. After deploy, copy its
-      # value from the Render dashboard into cron-job.org:
+      # Shared secret for the daily auto-syncs (jobs + current affairs).
+      # After deploy, copy its value from the Render dashboard into cron-job.org:
       #   POST https://careerprep-api.onrender.com/api/jobs/sync/scheduled?token=<value>
       #   schedule: daily 11:00, timezone Asia/Kolkata.
+      #   POST https://careerprep-api.onrender.com/api/current-affairs/sync/scheduled?token=<value>
+      #   schedule: daily 06:00, timezone Asia/Kolkata (free feeds: Inshorts + PIB + The Hindu, no keys).
       - key: CRON_SECRET
         generateValue: true
       - key: CORS_ORIGINS
