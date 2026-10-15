@@ -6,6 +6,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.core.security import CurrentUser, DbSession
 from app.models import Achievement, Notification, Profile, User, UserAchievement, XpEvent
@@ -97,9 +98,10 @@ def list_achievements(user: CurrentUser, db: DbSession) -> list[dict]:
 @router.get("/achievements/mine")
 def my_achievements(user: CurrentUser, db: DbSession) -> list[dict]:
     rows = db.scalars(
-        select(UserAchievement).where(UserAchievement.user_id == user.id).order_by(
-            UserAchievement.unlocked_at.desc()
-        )
+        select(UserAchievement)
+        .options(selectinload(UserAchievement.achievement))
+        .where(UserAchievement.user_id == user.id)
+        .order_by(UserAchievement.unlocked_at.desc())
     ).all()
     return [_achievement_row(row) for row in rows]
 

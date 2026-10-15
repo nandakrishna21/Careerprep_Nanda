@@ -160,6 +160,12 @@ Same catalog endpoints (courses category=it; courses with `career_path=true` for
 - GET `/admin/users?page&q=` → users w/ profile; PATCH `/admin/users/{id}` `{role?,is_active?}`; DELETE `/admin/users/{id}`
 - GET `/admin/analytics` → `{users_total, users_new_7d, quizzes_total, attempts_total, jobs_total, courses_total, top_quizzes:[{title,attempts}], signups_by_day:[{date,count}], avg_score_by_day:[{date,avg}]}`
 
+## 12b. Performance notes
+
+- Responses are gzip-compressed (`GZipMiddleware`, 500B threshold).
+- The frontend caches idempotent GETs in memory for 45s (stale reads never cross users; `POST/PUT/DELETE` invalidate their section, `/auth/me` is never cached) and retries a GET once on timeout/no-response (cold free-tier wake-ups). Axios timeout is 30s with a "server waking up" message.
+- Sidebar links prefetch their route chunk on hover; charts load lazily.
+
 ## 13. Seed data requirements
 
 - 13 gov exams (SSC CGL, SSC CHSL, SSC MTS, SSC GD, IBPS PO, IBPS Clerk, SBI PO, SBI Clerk, RBI Assistant, RRB NTPC, RRB Group D, UPSC Foundation, State Government Exams).

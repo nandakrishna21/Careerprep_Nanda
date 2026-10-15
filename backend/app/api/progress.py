@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.core.security import CurrentUser, DbSession
 from app.models import Quiz, QuizAttempt, StudySession, Topic, UserAchievement, XpEvent
@@ -65,6 +66,16 @@ def dashboard(user: CurrentUser, db: DbSession) -> dict:
             bucket[0] += pair[0]
             bucket[1] += pair[1]
 
+    # One batched quiz load (with topics) instead of db.get() per attempt —
+    # the old loop issued a query per attempt and made dashboard refresh slow.
+    quiz_map: dict[int, Quiz] = {}
+    if attempts:
+        quiz_ids = {attempt.quiz_id for attempt in attempts}
+        for quiz in db.scalars(
+            select(Quiz).options(selectinload(Quiz.topic)).where(Quiz.id.in_(quiz_ids))
+        ).all():
+            quiz_map[quiz.id] = quiz
+
     topic_rows: list[dict] = []
     if breakdown_totals:
         for name, (total, correct) in breakdown_totals.items():
@@ -73,7 +84,7 @@ def dashboard(user: CurrentUser, db: DbSession) -> dict:
     else:
         fallback: dict[str, list[float]] = defaultdict(list)
         for attempt in attempts:
-            quiz = db.get(Quiz, attempt.quiz_id)
+            quiz = quiz_map.get(attempt.quiz_id)
             if quiz is not None and quiz.topic is not None:
                 fallback[quiz.topic.title].append(float(attempt.accuracy or 0))
         for name, values in fallback.items():
@@ -135,7 +146,7 @@ def dashboard(user: CurrentUser, db: DbSession) -> dict:
 
     mock_rows: list[dict] = []
     for attempt in reversed(attempts):
-        quiz = db.get(Quiz, attempt.quiz_id)
+        quiz = quiz_map.get(attempt.quiz_id)
         if quiz is None or quiz.quiz_type != "mock":
             continue
         mock_rows.append(

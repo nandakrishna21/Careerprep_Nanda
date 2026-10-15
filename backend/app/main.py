@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import func, select
 
 from app.api import (
@@ -83,6 +84,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Gzip first so CORS stays outermost: big JSON lists (/pyqs, /jobs/facets,
+# /leaderboard) shrink ~4-6x, which is what slow refreshes feel on mobile.
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

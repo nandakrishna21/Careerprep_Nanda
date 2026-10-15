@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../stores/auth';
 import { Avatar, ThemeToggle } from '../components/ui';
+import { prefetchPage } from '../lib/prefetch';
 
 const YOUTUBE_CHANNEL = 'https://www.youtube.com/@freejobsinformation';
 const VTHETECHEE_CHANNEL = 'https://www.youtube.com/@VtheTechee';
@@ -176,6 +177,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       key={item.to}
                       to={item.to ?? '/'}
                       onClick={close}
+                      onMouseEnter={() => item.to && prefetchPage(item.to)}
+                      onFocus={() => item.to && prefetchPage(item.to)}
                       className={({ isActive }) =>
                         `${classes} ${
                           isActive
