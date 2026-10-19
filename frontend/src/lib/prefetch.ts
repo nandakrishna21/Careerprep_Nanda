@@ -14,6 +14,7 @@ const loaders: Record<string, () => Promise<unknown>> = {
   '/gov/mock': () => import('../pages/gov/MockTests'),
   '/gov/pyqs': () => import('../pages/gov/Pyqs'),
   '/gov/current-affairs': () => import('../pages/gov/CurrentAffairs'),
+  '/gov/videos': () => import('../pages/gov/VideoTutorials'),
   '/it': () => import('../pages/it/ItDashboard'),
   '/it/mock': () => import('../pages/it/ItMockTests'),
   '/dsa/prep-way': () => import('../pages/dsa/DsaPrepWay'),

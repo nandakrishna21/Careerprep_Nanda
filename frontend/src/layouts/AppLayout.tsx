@@ -67,6 +67,7 @@ const nav: NavGroup[] = [
       { to: '/gov/mock', label: 'Mock Tests', icon: FileText },
       { to: '/gov/pyqs', label: 'Previous Year Qs', icon: FileText },
       { to: '/gov/current-affairs', label: 'Current Affairs', icon: Newspaper },
+      { to: '/gov/videos', label: 'Video Tutorials', icon: Youtube },
     ],
   },
   {

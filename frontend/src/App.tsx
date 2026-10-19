@@ -28,6 +28,7 @@ const MockTestDetail = lazy(() => import('./pages/gov/MockTestDetail'));
 const Pyqs = lazy(() => import('./pages/gov/Pyqs'));
 const CurrentAffairs = lazy(() => import('./pages/gov/CurrentAffairs'));
 const CurrentAffairDetail = lazy(() => import('./pages/gov/CurrentAffairDetail'));
+const VideoTutorials = lazy(() => import('./pages/gov/VideoTutorials'));
 
 const ItDashboard = lazy(() => import('./pages/it/ItDashboard'));
 const CareerPathDetail = lazy(() => import('./pages/it/CareerPathDetail'));
@@ -139,6 +140,7 @@ export default function App() {
         <Route path="/gov/pyqs" element={<Protected><Pyqs /></Protected>} />
         <Route path="/gov/current-affairs" element={<Protected><CurrentAffairs /></Protected>} />
         <Route path="/gov/current-affairs/:slug" element={<Protected><CurrentAffairDetail /></Protected>} />
+        <Route path="/gov/videos" element={<Protected><VideoTutorials /></Protected>} />
         <Route path="/gov/quizzes/:id" element={<Protected><QuizRunner /></Protected>} />
 
         <Route path="/it" element={<Protected><ItDashboard /></Protected>} />
