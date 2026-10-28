@@ -44,7 +44,7 @@ def _call(prompt: str, system: str | None, temperature: float, response_mime_typ
         if not isinstance(text, str):
             raise ValueError("non-text candidate")
     except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as e:
-        raise HTTPException(status_code=502, detail=f"AI provider error: {str(e)[:100]}")
+        raise HTTPException(status_code=502, detail=f"AI provider error: {str(e)[:160]}")
     return text
 
 
