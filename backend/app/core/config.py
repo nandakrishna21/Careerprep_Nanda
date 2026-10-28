@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24
 
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash"
 
     apify_token: str = ""
     apify_max_items: int = 25
