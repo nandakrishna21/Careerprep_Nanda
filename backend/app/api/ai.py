@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections import Counter
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func, select
 
+from app.core.config import settings
 from app.core.security import CurrentUser, DbSession
 from app.models import InterviewSession, InterviewTurn, Question, Quiz, StudyPlan
 from app.schemas.ai import (
@@ -30,6 +32,39 @@ _INTERVIEW_SYSTEM = (
 _PLANNER_SYSTEM = (
     "You are an experienced study coach. You always answer with strict, valid JSON only."
 )
+_CHAT_SYSTEM = (
+    "You are a helpful, clear tutor for students preparing for Indian government exams, "
+    "IT placements and general studies. Explain concepts step by step, like ChatGPT or Claude: "
+    "start with a plain-language answer, then break down the reasoning, add a worked example when "
+    "useful, and finish with a short recap. Use markdown (headings, lists, tables, code blocks) for "
+    "structure. When files or images are attached, read them carefully and base your answer on them."
+)
+
+_ATTACHMENT_EXT_MIME = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".heic": "image/heic",
+    ".heif": "image/heif",
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".csv": "text/csv",
+    ".json": "application/json",
+}
+_ALLOWED_ATTACHMENT_MIMES = set(_ATTACHMENT_EXT_MIME.values())
+_MAX_ATTACHMENTS = 5
+_MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+_MAX_ATTACHMENTS_TOTAL_BYTES = 18 * 1024 * 1024
+
+
+def _attachment_mime(upload: UploadFile) -> str:
+    suffix = Path(upload.filename or "").suffix.lower()
+    mime = (upload.content_type or "").split(";")[0].strip().lower()
+    if mime in _ALLOWED_ATTACHMENT_MIMES:
+        return mime
+    return _ATTACHMENT_EXT_MIME.get(suffix, "")
 
 
 def _top_three(groups: list[list[str]]) -> list[str]:
@@ -413,15 +448,22 @@ class ChatResponse(BaseModel):
     response: str
 
 
+@router.get("/chat/status")
+def chat_status(user: CurrentUser) -> dict:
+    key = (settings.gemini_api_key or "").strip()
+    return {
+        "configured": bool(key),
+        "model": settings.gemini_model,
+        "key_hint": f"{key[:6]}…{key[-4:]}" if len(key) > 12 else "",
+    }
+
+
 @router.post("/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest, user: CurrentUser) -> ChatResponse:
     message = (payload.message or "").strip()
     if not message:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message is required")
-    system_prompt = payload.system or (
-        "You are a helpful, clear tutor. Explain concepts step by step like ChatGPT or Claude. "
-        "Use examples when helpful, break down complex topics, and be concise but thorough."
-    )
+    system_prompt = payload.system or _CHAT_SYSTEM
     try:
         text = gemini.generate_text(message, system=system_prompt, temperature=payload.temperature)
     except HTTPException:
@@ -429,6 +471,60 @@ def chat(payload: ChatRequest, user: CurrentUser) -> ChatResponse:
     except Exception:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="AI provider error")
     return ChatResponse(response=text.strip())
+
+
+@router.post("/chat/attachments", response_model=ChatResponse)
+def chat_with_attachments(
+    user: CurrentUser,
+    message: str = Form(""),
+    files: list[UploadFile] = File(...),
+) -> ChatResponse:
+    text = (message or "").strip()
+    if len(files) > _MAX_ATTACHMENTS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Too many attachments — at most {_MAX_ATTACHMENTS} files at a time.",
+        )
+    attachments: list[tuple[str, str, bytes]] = []
+    total_bytes = 0
+    for upload in files:
+        name = (upload.filename or "file").strip() or "file"
+        mime = _attachment_mime(upload)
+        if not mime:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported file type: {name}. Attach an image, PDF, TXT, MD, CSV or JSON file.",
+            )
+        data = upload.file.read()
+        if not data:
+            continue
+        if len(data) > _MAX_ATTACHMENT_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{name} is too large — max 10 MB per file.",
+            )
+        total_bytes += len(data)
+        if total_bytes > _MAX_ATTACHMENTS_TOTAL_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Attachments are too large — max 18 MB in total.",
+            )
+        attachments.append((name, mime, data))
+    if not attachments and not text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Attach a file or type a message."
+        )
+    prompt = text or (
+        "Explain the attached content in detail: summarise the key points, define any terms, "
+        "and answer the questions the material implies."
+    )
+    try:
+        reply = gemini.generate_with_attachments(prompt, attachments, system=_CHAT_SYSTEM)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="AI provider error")
+    return ChatResponse(response=reply.strip())
 
 
 @router.delete("/study-plans/{id}")

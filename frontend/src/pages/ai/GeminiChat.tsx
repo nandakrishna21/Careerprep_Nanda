@@ -1,16 +1,19 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Bot, Send, Sparkles, User as UserIcon } from 'lucide-react';
+import { Bot, FileText, ImageIcon, Paperclip, Send, Sparkles, User as UserIcon, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
-import { errorMessage, post } from '../../lib/api';
+import api, { errorMessage } from '../../lib/api';
 import { Card, Spinner } from '../../components/ui';
 import { PageHeader } from '../../components/SectionHeader';
+
+type AttachmentMeta = { name: string; isImage: boolean; url?: string };
 
 type Message = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  attachments?: AttachmentMeta[];
 };
 
 const SUGGESTIONS = [
@@ -20,31 +23,111 @@ const SUGGESTIONS = [
   'Give me 5 MCQs on Indian Polity with answers',
 ];
 
+const MAX_FILES = 5;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 18 * 1024 * 1024;
+const ALLOWED_EXT = /\.(png|jpe?g|webp|heic|heif|pdf|txt|md|csv|json)$/i;
+const CHAT_TIMEOUT_MS = 120_000;
+
 export default function GeminiChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [pending, setPending] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrls = useRef<string[]>([]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  useEffect(
+    () => () => {
+      objectUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
+
+  const addFiles = (list: FileList | null) => {
+    const incoming = Array.from(list ?? []);
+    if (!incoming.length) return;
+    const next = [...pending];
+    let total = next.reduce((sum, file) => sum + file.size, 0);
+    for (const file of incoming) {
+      if (next.length >= MAX_FILES) {
+        toast.error(`You can attach up to ${MAX_FILES} files.`);
+        break;
+      }
+      if (!ALLOWED_EXT.test(file.name) && !file.type.startsWith('image/')) {
+        toast.error(`${file.name}: attach images, PDF, TXT, MD, CSV or JSON files.`);
+        continue;
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        toast.error(`${file.name} is larger than 10 MB.`);
+        continue;
+      }
+      if (total + file.size > MAX_TOTAL_BYTES) {
+        toast.error('Attachments exceed 18 MB in total.');
+        break;
+      }
+      next.push(file);
+      total += file.size;
+    }
+    setPending(next);
+  };
+
   const send = async (text: string) => {
     const message = text.trim();
-    if (!message || loading) return;
-    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: message };
-    setMessages((prev) => [...prev, userMsg]);
+    if (loading || (!message && pending.length === 0)) return;
+    const filesToSend = pending;
+    const attachments: AttachmentMeta[] = filesToSend.map((file) => {
+      const isImage = file.type.startsWith('image/');
+      let url: string | undefined;
+      if (isImage) {
+        url = URL.createObjectURL(file);
+        objectUrls.current.push(url);
+      }
+      return { name: file.name, isImage, url };
+    });
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: message || 'Explain this attachment.',
+        attachments: attachments.length ? attachments : undefined,
+      },
+    ]);
     setInput('');
+    setPending([]);
     setLoading(true);
     try {
-      const res = await post<{ response: string }>('/ai/chat', { message });
-      const assistantMsg: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: res.response || 'No response from Gemini.',
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+      let reply: string;
+      if (filesToSend.length) {
+        const form = new FormData();
+        form.append('message', message);
+        filesToSend.forEach((file) => form.append('files', file));
+        const res = await api.post<{ response: string }>('/ai/chat/attachments', form, {
+          timeout: CHAT_TIMEOUT_MS,
+        });
+        reply = res.data.response;
+      } else {
+        const res = await api.post<{ response: string }>(
+          '/ai/chat',
+          { message },
+          { timeout: CHAT_TIMEOUT_MS },
+        );
+        reply = res.data.response;
+      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: reply || 'No response from Gemini.',
+        },
+      ]);
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -61,7 +144,7 @@ export default function GeminiChat() {
     <div className="mx-auto flex h-[calc(100dvh-8rem)] max-w-4xl flex-col gap-4">
       <PageHeader
         title="Gemini Chat"
-        subtitle="Ask anything and get clear, step-by-step explanations — like ChatGPT or Claude."
+        subtitle="Ask anything and get clear, step-by-step explanations — attach images or PDFs for help with problems, notes and diagrams."
       />
 
       <Card className="flex flex-1 flex-col overflow-hidden">
@@ -75,7 +158,8 @@ export default function GeminiChat() {
                 What can I explain for you?
               </h2>
               <p className="mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
-                Ask for explanations, breakdowns, examples, exam answers, code help — anything.
+                Ask a question, or attach a photo of a problem, PDF notes or a diagram — Gemini will
+                read it and explain.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 {SUGGESTIONS.map((s) => (
@@ -109,6 +193,28 @@ export default function GeminiChat() {
                         : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-100'
                     }`}
                   >
+                    {m.attachments && m.attachments.length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        {m.attachments.map((file) =>
+                          file.isImage && file.url ? (
+                            <img
+                              key={`${m.id}-${file.name}`}
+                              src={file.url}
+                              alt={file.name}
+                              className="h-24 w-24 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <span
+                              key={`${m.id}-${file.name}`}
+                              className="inline-flex max-w-[14rem] items-center gap-1.5 rounded-lg bg-white/20 px-2 py-1 text-xs font-medium"
+                            >
+                              <FileText className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{file.name}</span>
+                            </span>
+                          ),
+                        )}
+                      </div>
+                    )}
                     {m.role === 'assistant' ? (
                       <div className="prose prose-sm max-w-none prose-slate dark:prose-invert prose-p:my-2 prose-pre:my-3">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
@@ -139,22 +245,71 @@ export default function GeminiChat() {
             </div>
           )}
         </div>
-        <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-slate-200 p-3 dark:border-slate-800">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me to explain anything..."
-            className="input flex-1"
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-          >
-            <Send className="h-4 w-4" /> Send
-          </button>
-        </form>
+
+        <div className="border-t border-slate-200 dark:border-slate-800">
+          {pending.length > 0 && (
+            <div className="flex flex-wrap gap-2 px-3 pt-3">
+              {pending.map((file, index) => (
+                <span
+                  key={`${file.name}-${index}`}
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  {file.type.startsWith('image/') ? (
+                    <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <FileText className="h-3.5 w-3.5 shrink-0" />
+                  )}
+                  <span className="max-w-[12rem] truncate">{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPending((prev) => prev.filter((_, i) => i !== index))}
+                    className="rounded p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700"
+                    aria-label={`Remove ${file.name}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="flex items-center gap-2 p-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.txt,.md,.csv,.json"
+              className="hidden"
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || pending.length >= MAX_FILES}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+              title="Attach images or files"
+              aria-label="Attach images or files"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask me to explain anything, or attach a file..."
+              className="input flex-1"
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              disabled={loading || (!input.trim() && pending.length === 0)}
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+            >
+              <Send className="h-4 w-4" /> Send
+            </button>
+          </form>
+        </div>
       </Card>
     </div>
   );
