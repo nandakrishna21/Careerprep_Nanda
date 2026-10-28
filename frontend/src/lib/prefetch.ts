@@ -23,6 +23,7 @@ const loaders: Record<string, () => Promise<unknown>> = {
   '/ai/planner': () => import('../pages/ai/AiPlanner'),
   '/ai/resume': () => import('../pages/ai/AiResume'),
   '/ai/resume/analyze': () => import('../pages/ai/AiResumeAnalyze'),
+  '/ai/chat': () => import('../pages/ai/GeminiChat'),
   '/admin': () => import('../pages/admin/Admin'),
 };
 

@@ -400,6 +400,37 @@ def get_study_plan(id: int, user: CurrentUser, db: DbSession) -> dict:
     }
 
 
+from pydantic import BaseModel
+
+
+class ChatRequest(BaseModel):
+    message: str
+    system: str | None = None
+    temperature: float = 0.7
+
+
+class ChatResponse(BaseModel):
+    response: str
+
+
+@router.post("/chat", response_model=ChatResponse)
+def chat(payload: ChatRequest, user: CurrentUser) -> ChatResponse:
+    message = (payload.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message is required")
+    system_prompt = payload.system or (
+        "You are a helpful, clear tutor. Explain concepts step by step like ChatGPT or Claude. "
+        "Use examples when helpful, break down complex topics, and be concise but thorough."
+    )
+    try:
+        text = gemini.generate_text(message, system=system_prompt, temperature=payload.temperature)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="AI provider error")
+    return ChatResponse(response=text.strip())
+
+
 @router.delete("/study-plans/{id}")
 def delete_study_plan(id: int, user: CurrentUser, db: DbSession) -> dict:
     plan = db.get(StudyPlan, id)

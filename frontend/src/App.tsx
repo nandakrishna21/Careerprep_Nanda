@@ -44,6 +44,7 @@ const AiInterview = lazy(() => import('./pages/ai/AiInterview'));
 const AiPlanner = lazy(() => import('./pages/ai/AiPlanner'));
 const AiResume = lazy(() => import('./pages/ai/AiResume'));
 const AiResumeAnalyze = lazy(() => import('./pages/ai/AiResumeAnalyze'));
+const GeminiChat = lazy(() => import('./pages/ai/GeminiChat'));
 
 const Jobs = lazy(() => import('./pages/jobs/Jobs'));
 const JobDetail = lazy(() => import('./pages/jobs/JobDetail'));
@@ -156,6 +157,7 @@ export default function App() {
         <Route path="/ai/planner" element={<Protected><AiPlanner /></Protected>} />
         <Route path="/ai/resume" element={<Protected><AiResume /></Protected>} />
         <Route path="/ai/resume/analyze" element={<Protected><AiResumeAnalyze /></Protected>} />
+        <Route path="/ai/chat" element={<Protected><GeminiChat /></Protected>} />
 
         <Route path="/admin/*" element={<ProtectedAdmin><Admin /></ProtectedAdmin>} />
         <Route path="*" element={<Protected><NotFound /></Protected>} />
