@@ -33,7 +33,8 @@ def _call(prompt: str, system: str | None, temperature: float, response_mime_typ
     }
     if system:
         body["systemInstruction"] = {"parts": [{"text": system}]}
-    url = _GEMINI_URL.format(model=settings.gemini_model)
+    model = getattr(settings, "gemini_model", None) or "gemini-3.5-flash"
+    url = _GEMINI_URL.format(model=model)
     try:
         with httpx.Client(timeout=_TIMEOUT_SECONDS) as client:
             response = client.post(url, headers={"x-goog-api-key": settings.gemini_api_key}, json=body)
@@ -42,8 +43,8 @@ def _call(prompt: str, system: str | None, temperature: float, response_mime_typ
         text = payload["candidates"][0]["content"]["parts"][0]["text"]
         if not isinstance(text, str):
             raise ValueError("non-text candidate")
-    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
-        raise HTTPException(status_code=502, detail="AI provider error")
+    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as e:
+        raise HTTPException(status_code=502, detail=f"AI provider error: {str(e)[:100]}")
     return text
 
 
