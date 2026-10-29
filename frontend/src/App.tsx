@@ -49,6 +49,7 @@ const GeminiChat = lazy(() => import('./pages/ai/GeminiChat'));
 const Jobs = lazy(() => import('./pages/jobs/Jobs'));
 const JobDetail = lazy(() => import('./pages/jobs/JobDetail'));
 const MyJobsList = lazy(() => import('./pages/jobs/MyJobsList'));
+const FreeResources = lazy(() => import('./pages/FreeResources'));
 const Admin = lazy(() => import('./pages/admin/Admin'));
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -127,6 +128,7 @@ export default function App() {
         <Route path="/jobs" element={<AppLayout><Jobs /></AppLayout>} />
         <Route path="/jobs/:id" element={<AppLayout><JobDetail /></AppLayout>} />
         <Route path="/my-jobs" element={<Protected><MyJobsList /></Protected>} />
+        <Route path="/resources" element={<Protected><FreeResources /></Protected>} />
 
         <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
         <Route path="/leaderboard" element={<Protected><Leaderboard /></Protected>} />

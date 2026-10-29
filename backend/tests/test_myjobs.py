@@ -107,3 +107,26 @@ def test_myjob_upkeep_adds_resources_column():
     # idempotent second run
     assert ensure_myjob_columns(engine) == 0
     engine.dispose()
+
+def test_track_application_from_job_is_idempotent(client, db, auth_headers):
+    jobs = client.get("/api/jobs", params={"page": 1, "page_size": 1}).json()
+    assert jobs["items"], "expected seeded jobs"
+    job = jobs["items"][0]
+    payload = {
+        "job_id": job["id"],
+        "title": job["title"],
+        "organization": job["company"],
+        "status": "wishlist",
+    }
+    first = client.post("/api/my-jobs", json=payload, headers=auth_headers)
+    assert first.status_code == 201, first.text
+    second = client.post("/api/my-jobs", json=payload, headers=auth_headers)
+    assert second.status_code == 201
+    assert second.json()["id"] == first.json()["id"]
+
+    detail = client.get(f"/api/jobs/{job['id']}", headers=auth_headers).json()
+    assert detail["is_tracked"] is True
+    assert detail["my_job_id"] == first.json()["id"]
+
+    assert client.get(f"/api/jobs/{job['id']}").json()["is_tracked"] is False
+    client.delete(f"/api/my-jobs/{first.json()['id']}", headers=auth_headers)

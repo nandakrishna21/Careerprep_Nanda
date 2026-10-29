@@ -8,12 +8,14 @@ import {
   Building2,
   CalendarClock,
   CalendarDays,
+  ClipboardCheck,
+  ClipboardList,
   ExternalLink,
   MapPin,
   Share2,
   Wallet,
 } from 'lucide-react';
-import { errorMessage, get, post, del } from '../../lib/api';
+import { errorMessage, get, post, del, invalidateCache } from '../../lib/api';
 import type { Job } from '../../lib/types';
 import { Badge, Button, Card, EmptyState, Spinner } from '../../components/ui';
 import { postedAgo, titleCase } from '../../components/helpers';
@@ -73,6 +75,34 @@ export default function JobDetail() {
         setJob({ ...job, is_saved: true, save_status: 'saved' });
         toast.success('Job saved');
       }
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const trackApplication = async () => {
+    if (!job) return;
+    if (!token) {
+      toast('Sign in to track applications.');
+      navigate(`/login?next=${encodeURIComponent(`/jobs/${job.id}`)}`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const row = await post<{ id: number }>('/my-jobs', {
+        job_id: job.id,
+        title: job.title,
+        organization: job.company,
+        role_name: job.category || '',
+        status: 'wishlist',
+        deadline: job.deadline,
+        apply_link: job.apply_link,
+      });
+      setJob({ ...job, is_tracked: true, my_job_id: row.id });
+      invalidateCache('/jobs');
+      toast.success('Added to My Applications');
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -187,6 +217,15 @@ export default function JobDetail() {
             {job.is_saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
             {job.is_saved ? 'Saved' : 'Save'}
           </Button>
+          {job.is_tracked ? (
+            <Button variant="outline" onClick={() => navigate('/my-jobs')}>
+              <ClipboardCheck className="h-4 w-4" /> Tracked
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => void trackApplication()} loading={busy}>
+              <ClipboardList className="h-4 w-4" /> Track
+            </Button>
+          )}
           <Button variant="outline" onClick={() => void share()} aria-label="Copy link to this job">
             <Share2 className="h-4 w-4" /> Share
           </Button>

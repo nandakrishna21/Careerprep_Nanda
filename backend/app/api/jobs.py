@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import OptionalUser
 from app.core.config import settings
 from app.core.security import CurrentUser, DbSession
-from app.models import Job, SavedJob, User
+from app.models import Job, MyJob, SavedJob, User
 from app.schemas.misc import SaveJobRequest
 from app.services.common import decode_short_code, job_brief, share_url
 from app.services.job_taxonomy import (
@@ -362,7 +362,16 @@ def _share_html(job) -> str:
 def get_job(id: int, db: DbSession, user: OptionalUser) -> dict:
     job = _get_job(db, id)
     saved = _saved_statuses(db, user)
-    return _job_item(job, saved)
+    tracked_id = None
+    if user is not None:
+        tracked_id = db.scalar(
+            select(MyJob.id).where(MyJob.user_id == user.id, MyJob.job_id == job.id)
+        )
+    return {
+        **_job_item(job, saved),
+        "is_tracked": tracked_id is not None,
+        "my_job_id": tracked_id,
+    }
 
 
 @router.post("/{id}/save")

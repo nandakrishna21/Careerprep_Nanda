@@ -125,7 +125,7 @@ export default function MyJobsList() {
       setItems((prev) => (prev.some((j) => j.id === job.id) ? prev.map((j) => (j.id === job.id ? job : j)) : [job, ...prev]));
       setSelectedId(job.id);
       setTab('overview');
-      toast.success('Added to My Jobs List');
+      toast.success('Added to My Applications');
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -163,7 +163,7 @@ export default function MyJobsList() {
       await del(`/my-jobs/${deleting.id}`);
       setItems((prev) => prev.filter((j) => j.id !== deleting.id));
       if (selectedId === deleting.id) setSelectedId(null);
-      toast.success('Removed from My Jobs List');
+      toast.success('Removed from My Applications');
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -174,8 +174,8 @@ export default function MyJobsList() {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <PageHeader
-        title="My Jobs List"
-        subtitle="Jobs you have applied for — with syllabus, exam pattern, strategy, preparation plan and free resources in one place."
+        title="My Applications"
+        subtitle="Every job you apply for — tracked with its syllabus, exam pattern, strategy, preparation plan and free resources in one place."
         actions={
           <Button onClick={() => setShowAdd(true)}>
             <Plus className="h-4 w-4" /> Add job
@@ -225,7 +225,7 @@ export default function MyJobsList() {
                     onClick={() => void addFromTemplate(t.template_key)}
                   >
                     {added ? <CheckCircle2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                    {added ? 'Added — open it' : 'Add to My Jobs List'}
+                    {added ? 'Added — open it' : 'Add to My Applications'}
                   </Button>
                 </div>
               );
@@ -348,7 +348,7 @@ export default function MyJobsList() {
       {editing && <EditModal job={editing} onClose={() => setEditing(null)} onSaved={(u) => { setItems((prev) => prev.map((j) => (j.id === u.id ? u : j))); setEditing(null); }} />}
       {deleting && (
         <ModalShell title="Remove job?" onClose={() => setDeleting(null)}>
-          <p className="text-sm text-slate-500">Remove <b>{deleting.title}</b> from My Jobs List? Its syllabus and notes will be deleted.</p>
+          <p className="text-sm text-slate-500">Remove <b>{deleting.title}</b> from My Applications? Its syllabus and notes will be deleted.</p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button>
             <Button variant="danger" onClick={() => void removeJob()}>Remove</Button>
@@ -590,7 +590,7 @@ function AddModal({ onClose, onCreated }: { onClose: () => void; onCreated: (j: 
     setSaving(true);
     try {
       const job = await post<MyJob>('/my-jobs', { title: title.trim(), organization: organization.trim(), role_name: roleName.trim(), status });
-      toast.success('Added to My Jobs List');
+      toast.success('Added to My Applications');
       onCreated(job);
     } catch (err) {
       toast.error(errorMessage(err));

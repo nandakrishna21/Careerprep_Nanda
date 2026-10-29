@@ -180,6 +180,8 @@ export interface Job {
     share_url?: string;
   is_saved?: boolean;
   save_status?: string;
+  is_tracked?: boolean;
+  my_job_id?: number | null;
 }
 
 export interface MyJobSyllabusSection {

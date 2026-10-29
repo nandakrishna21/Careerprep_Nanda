@@ -2,9 +2,11 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   Binary,
+  BookOpen,
   Briefcase,
   Building2,
   ChevronDown,
+  ClipboardList,
   ExternalLink,
   Flame,
   GraduationCap,
@@ -53,12 +55,8 @@ const nav: NavGroup[] = [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
       { to: '/jobs', label: 'Jobs & Opportunities', icon: Briefcase },
-    ],
-  },
-  {
-    label: 'Super Admin',
-    items: [
-      { to: '/my-jobs', label: 'My Jobs List', icon: Briefcase, superadminOnly: true },
+      { to: '/my-jobs', label: 'My Applications', icon: ClipboardList },
+      { to: '/resources', label: 'Free Resources', icon: BookOpen },
     ],
   },
   {

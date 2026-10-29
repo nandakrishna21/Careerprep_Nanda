@@ -108,6 +108,13 @@ def create_my_job(payload: MyJobCreate, user: CurrentUser, db: DbSession) -> dic
         job = db.get(Job, payload.job_id)
         if job is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        # "Track application" is idempotent: clicking twice must not create a
+        # second row for the same job.
+        existing = db.scalar(
+            select(MyJob).where(MyJob.user_id == user.id, MyJob.job_id == job.id)
+        )
+        if existing is not None:
+            return _out(existing, job)
     row = MyJob(
         user_id=user.id,
         job_id=payload.job_id,

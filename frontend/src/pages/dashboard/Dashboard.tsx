@@ -8,6 +8,7 @@ import {
   Award,
   BookOpen,
   Briefcase,
+  ClipboardList,
   Flame,
   GraduationCap,
   Lock,
@@ -266,6 +267,8 @@ export default function Dashboard() {
           <QuickAction to="/ai/planner" icon={<Sparkles className="h-5 w-5" />} title="AI Study Planner" blurb="Build a personalised day-by-day study plan." />
           <QuickAction to="/ai/interview" icon={<MessageSquare className="h-5 w-5" />} title="AI Mock Interview" blurb="Practice interviews with instant feedback." />
           <QuickAction to="/jobs" icon={<Briefcase className="h-5 w-5" />} title="Jobs Board" blurb="Government notifications and IT openings." />
+          <QuickAction to="/my-jobs" icon={<ClipboardList className="h-5 w-5" />} title="My Applications" blurb="Track every application and its status." />
+          <QuickAction to="/resources" icon={<BookOpen className="h-5 w-5" />} title="Free Resources" blurb="Official portals, free courses and practice sites." />
         </div>
       </section>
     </div>

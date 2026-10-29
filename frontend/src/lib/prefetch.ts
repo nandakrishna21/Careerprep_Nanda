@@ -10,6 +10,7 @@ const loaders: Record<string, () => Promise<unknown>> = {
   '/profile': () => import('../pages/Profile'),
   '/jobs': () => import('../pages/jobs/Jobs'),
   '/my-jobs': () => import('../pages/jobs/MyJobsList'),
+  '/resources': () => import('../pages/FreeResources'),
   '/gov': () => import('../pages/gov/GovDashboard'),
   '/gov/mock': () => import('../pages/gov/MockTests'),
   '/gov/pyqs': () => import('../pages/gov/Pyqs'),
