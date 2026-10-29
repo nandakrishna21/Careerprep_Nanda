@@ -1,11 +1,11 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Bot, FileText, ImageIcon, Paperclip, Send, Sparkles, User as UserIcon, X } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
 import api, { errorMessage } from '../../lib/api';
 import { Card, Spinner } from '../../components/ui';
 import { PageHeader } from '../../components/SectionHeader';
+
+const MarkdownMessage = lazy(() => import('../../components/MarkdownMessage'));
 
 type AttachmentMeta = { name: string; isImage: boolean; url?: string };
 
@@ -109,6 +109,13 @@ export default function GeminiChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  useEffect(() => {
+    // Wake the free-tier backend while the user is still typing, so the first
+    // answer does not pay the cold-start penalty.
+    void fetch(`${API_BASE}/health`, { cache: 'no-store' }).catch(() => undefined);
+    void import('../../components/MarkdownMessage');
+  }, []);
 
   useEffect(
     () => () => {
@@ -317,7 +324,11 @@ export default function GeminiChat() {
                     )}
                     {m.role === 'assistant' ? (
                       <div className="prose prose-sm max-w-none prose-slate dark:prose-invert prose-p:my-2 prose-pre:my-3">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                        <Suspense
+                          fallback={<p className="whitespace-pre-wrap">{m.content}</p>}
+                        >
+                          <MarkdownMessage content={m.content} />
+                        </Suspense>
                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap">{m.content}</p>
