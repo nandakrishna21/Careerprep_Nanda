@@ -29,7 +29,7 @@ from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
 from app.models import Profile, User
-from app.services import achievements
+from app.services import achievements, gemini
 from app.services.email_otp import ensure_user_columns
 from app.services.job_taxonomy import backfill_jobs
 from app.services.myjobs_upkeep import ensure_myjob_columns
@@ -75,6 +75,7 @@ async def lifespan(_: FastAPI):
     finally:
         db.close()
     yield
+    gemini.close_client()
 
 
 app = FastAPI(

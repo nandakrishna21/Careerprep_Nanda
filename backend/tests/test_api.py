@@ -175,3 +175,35 @@ def test_jobs_board_readable_without_login(client):
 
     assert client.post(f"/api/jobs/{job_id}/save").status_code == 401
     assert client.get("/api/jobs/saved").status_code == 401
+
+def test_chat_stream_emits_sse(client, auth_headers, monkeypatch):
+    from app.services import gemini
+
+    def fake_stream(prompt, system=None, temperature=0.7, attachments=None):
+        yield "Hello"
+        yield " world"
+
+    monkeypatch.setattr(gemini, "stream_text", fake_stream)
+    res = client.post("/api/ai/chat/stream", headers=auth_headers, json={"message": "hi"})
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("text/event-stream")
+    body = res.text
+    assert '"delta": "Hello"' in body
+    assert '"delta": " world"' in body
+    assert body.rstrip().endswith("data: [DONE]")
+
+
+def test_chat_stream_reports_provider_errors(client, auth_headers, monkeypatch):
+    from fastapi import HTTPException
+
+    from app.services import gemini
+
+    def fake_stream(prompt, system=None, temperature=0.7, attachments=None):
+        raise HTTPException(status_code=429, detail="Gemini rate limit reached. Please retry in a minute.")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(gemini, "stream_text", fake_stream)
+    res = client.post("/api/ai/chat/stream", headers=auth_headers, json={"message": "hi"})
+    assert res.status_code == 200
+    assert "rate limit reached" in res.text
+    assert res.text.rstrip().endswith("data: [DONE]")

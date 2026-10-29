@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 
 from app.core.config import settings
@@ -471,6 +473,37 @@ def chat(payload: ChatRequest, user: CurrentUser) -> ChatResponse:
     except Exception:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="AI provider error")
     return ChatResponse(response=text.strip())
+
+
+@router.post("/chat/stream")
+def chat_stream(payload: ChatRequest, user: CurrentUser) -> StreamingResponse:
+    """Server-sent events so the answer renders token-by-token instead of waiting."""
+    message = (payload.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message is required")
+    system_prompt = payload.system or _CHAT_SYSTEM
+
+    def events():
+        try:
+            for delta in gemini.stream_text(
+                message, system=system_prompt, temperature=payload.temperature
+            ):
+                yield f"data: {json.dumps({'delta': delta})}\n\n"
+        except HTTPException as exc:
+            yield f"data: {json.dumps({'error': exc.detail})}\n\n"
+        except Exception:
+            yield f"data: {json.dumps({'error': 'AI provider error'})}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/chat/attachments", response_model=ChatResponse)

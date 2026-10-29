@@ -3,36 +3,66 @@ from __future__ import annotations
 import base64
 import json
 import re
-from typing import Any
+from typing import Any, Iterator
 
 import httpx
 from fastapi import HTTPException
 
 from app.core.config import settings
 
-_GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-_TIMEOUT_SECONDS = 90.0
+_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}"
+_GEMINI_URL = _BASE_URL + ":generateContent"
+_STREAM_URL = _BASE_URL + ":streamGenerateContent?alt=sse"
+_TIMEOUT = httpx.Timeout(connect=8.0, read=15.0, write=10.0, pool=5.0)
 _FENCE_RE = re.compile(r"^```[a-zA-Z]*\s*(.*?)\s*```$", re.DOTALL)
 
 _IMAGE_MIMES = {"image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"}
 _TEXT_MIMES = {"text/plain", "text/markdown", "text/csv", "application/json"}
 _MAX_INLINE_TEXT_CHARS = 100_000
 
-# Google retires model names for new API keys (e.g. gemini-2.0-flash and
-# gemini-2.5-flash now return 404 "no longer available to new users"). Try the
-# configured model first, then these known-good ones before giving up, so a
-# stale GEMINI_MODEL env var can never break the chat.
+# Flash-lite with thinking minimised is by far the fastest (first token ~1.5s);
+# the bigger models are kept as fallbacks for when Google is overloaded.
+_PREFERRED_MODEL = "gemini-3.5-flash-lite"
 _FALLBACK_MODELS = (
+    "gemini-3.5-flash-lite",
     "gemini-3.5-flash",
-    "gemini-2.5-flash",
-    "gemini-flash-latest",
+    "gemini-3.6-flash",
+    "gemini-flash-lite-latest",
     "gemini-3.8-flash",
-    "gemini-2.5-pro",
 )
+
+# Tried in order for every model: budget 0 is rejected on lite models, while
+# level "low" is rejected on older ones, and a few models accept neither.
+_THINKING_BUDGET: dict[str, Any] = {"thinkingConfig": {"thinkingBudget": 0}}
+_THINKING_LOW: dict[str, Any] = {"thinkingConfig": {"thinkingLevel": "low"}}
+
+
+def _thinking_configs(model: str) -> tuple[dict[str, Any], ...]:
+    if "lite" in model:
+        return (_THINKING_LOW, _THINKING_BUDGET, {})
+    return (_THINKING_BUDGET, _THINKING_LOW, {})
+
+_client: httpx.Client | None = None
+
+
+def _client_instance() -> httpx.Client:
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.Client(timeout=_TIMEOUT, limits=httpx.Limits(max_keepalive_connections=8))
+    return _client
+
+
+def close_client() -> None:
+    global _client
+    if _client is not None and not _client.is_closed:
+        _client.close()
+    _client = None
 
 
 def _model_candidates() -> list[str]:
-    ordered = [getattr(settings, "gemini_model", "") or "", *_FALLBACK_MODELS]
+    # The lite model goes first even if GEMINI_MODEL points at a slower one:
+    # latency matters more here, and failures still escalate through the chain.
+    ordered = [_PREFERRED_MODEL, getattr(settings, "gemini_model", "") or "", *_FALLBACK_MODELS]
     seen: set[str] = set()
     result: list[str] = []
     for model in ordered:
@@ -88,17 +118,15 @@ def _attachment_part(mime: str, data: bytes, name: str) -> dict[str, Any]:
     }
 
 
-def _call(
+def _request_body(
     prompt: str,
     system: str | None,
     temperature: float,
     response_mime_type: str | None,
-    attachments: list[tuple[str, str, bytes]] | None = None,
-) -> str:
-    api_key = (settings.gemini_api_key or "").strip()
-    if not api_key:
-        raise HTTPException(status_code=503, detail="AI is not configured. Set GEMINI_API_KEY.")
-    generation_config: dict[str, Any] = {"temperature": temperature}
+    attachments: list[tuple[str, str, bytes]] | None,
+    thinking: dict[str, Any],
+) -> dict[str, Any]:
+    generation_config: dict[str, Any] = {"temperature": temperature, **thinking}
     if response_mime_type:
         generation_config["responseMimeType"] = response_mime_type
     parts = [_attachment_part(mime, data, name) for name, mime, data in (attachments or [])]
@@ -109,38 +137,142 @@ def _call(
     }
     if system:
         body["systemInstruction"] = {"parts": [{"text": system}]}
+    return body
 
+
+def _api_key() -> str:
+    api_key = (settings.gemini_api_key or "").strip()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="AI is not configured. Set GEMINI_API_KEY.")
+    return api_key
+
+
+def _raise_for_status(response: httpx.Response) -> None:
+    if response.status_code in (401, 403):
+        raise HTTPException(
+            status_code=502,
+            detail="Gemini rejected the API key. Check GEMINI_API_KEY in the server environment.",
+        )
+    raise HTTPException(status_code=502, detail=f"AI provider error: {_error_message(response)}")
+
+
+def _call(
+    prompt: str,
+    system: str | None,
+    temperature: float,
+    response_mime_type: str | None,
+    attachments: list[tuple[str, str, bytes]] | None = None,
+) -> str:
+    api_key = _api_key()
+    client = _client_instance()
+    headers = {"x-goog-api-key": api_key}
     last_error = "no model available"
+    unreachable = False
+    rate_limited = False
     for model in _model_candidates():
         url = _GEMINI_URL.format(model=model)
-        try:
-            with httpx.Client(timeout=_TIMEOUT_SECONDS) as client:
-                response = client.post(url, headers={"x-goog-api-key": api_key}, json=body)
-        except httpx.HTTPError as exc:
-            raise HTTPException(
-                status_code=502,
-                detail=f"AI provider unreachable ({type(exc).__name__}). Please retry in a moment.",
+        for thinking in _thinking_configs(model):
+            body = _request_body(
+                prompt, system, temperature, response_mime_type, attachments, thinking
             )
-        if response.status_code in (400, 404):
-            # Unknown/retired model for this key — try the next candidate.
-            last_error = _error_message(response)
-            continue
-        if response.status_code == 429:
-            raise HTTPException(status_code=429, detail="Gemini rate limit reached. Please retry in a minute.")
-        if response.status_code in (401, 403):
-            raise HTTPException(
-                status_code=502,
-                detail="Gemini rejected the API key. Check GEMINI_API_KEY in the server environment.",
-            )
-        if response.status_code >= 400:
-            raise HTTPException(
-                status_code=502, detail=f"AI provider error: {_error_message(response)}"
-            )
-        try:
-            return _extract_text(response.json())
-        except (KeyError, ValueError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            last_error = f"unexpected response ({type(exc).__name__})"
-            continue
+            try:
+                response = client.post(url, headers=headers, json=body)
+            except httpx.HTTPError:
+                unreachable = True
+                last_error = "AI provider unreachable"
+                break
+            if response.status_code in (400, 404):
+                # Retired model, or this model rejects the thinking config.
+                last_error = _error_message(response)
+                continue
+            if response.status_code == 429 or response.status_code >= 500:
+                # Rate limit / overloaded model: move on instead of waiting.
+                last_error = _error_message(response)
+                rate_limited = response.status_code == 429
+                break
+            if response.status_code >= 400:
+                _raise_for_status(response)
+            try:
+                return _extract_text(response.json())
+            except (KeyError, ValueError, IndexError, TypeError, json.JSONDecodeError) as exc:
+                last_error = f"unexpected response ({type(exc).__name__})"
+                break
+    if rate_limited:
+        raise HTTPException(status_code=429, detail="Gemini rate limit reached. Please retry in a minute.")
+    if unreachable:
+        raise HTTPException(
+            status_code=502,
+            detail="AI provider unreachable. Please retry in a moment.",
+        )
+    raise HTTPException(status_code=502, detail=f"AI provider error: {last_error}")
+
+
+def stream_text(
+    prompt: str,
+    system: str | None = None,
+    temperature: float = 0.7,
+    attachments: list[tuple[str, str, bytes]] | None = None,
+) -> Iterator[str]:
+    """Yield answer deltas as Gemini produces them (first token in ~1.5s)."""
+    api_key = _api_key()
+    client = _client_instance()
+    headers = {"x-goog-api-key": api_key}
+    last_error = "no model available"
+    unreachable = False
+    rate_limited = False
+    for model in _model_candidates():
+        url = _STREAM_URL.format(model=model)
+        for thinking in _thinking_configs(model):
+            body = _request_body(prompt, system, temperature, None, attachments, thinking)
+            yielded = False
+            try:
+                with client.stream("POST", url, headers=headers, json=body) as response:
+                    if response.status_code in (400, 404):
+                        response.read()
+                        last_error = _error_message(response)
+                        continue
+                    if response.status_code == 429 or response.status_code >= 500:
+                        response.read()
+                        last_error = _error_message(response)
+                        rate_limited = response.status_code == 429
+                        break
+                    if response.status_code >= 400:
+                        response.read()
+                        _raise_for_status(response)
+                    for line in response.iter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        data = line[5:].strip()
+                        if data == "[DONE]":
+                            return
+                        try:
+                            chunk = json.loads(data)
+                        except json.JSONDecodeError:
+                            continue
+                        for part in (
+                            (chunk.get("candidates") or [{}])[0].get("content") or {}
+                        ).get("parts", []):
+                            text = part.get("text")
+                            if isinstance(text, str) and text:
+                                yielded = True
+                                yield text
+                    return
+            except httpx.HTTPError:
+                if yielded:
+                    raise HTTPException(
+                        status_code=502,
+                        detail="AI response was cut off. Please retry.",
+                    )
+                unreachable = True
+                last_error = "AI provider unreachable"
+                break
+    if rate_limited:
+        raise HTTPException(status_code=429, detail="Gemini rate limit reached. Please retry in a minute.")
+    if unreachable:
+        raise HTTPException(
+            status_code=502,
+            detail="AI provider unreachable. Please retry in a moment.",
+        )
     raise HTTPException(status_code=502, detail=f"AI provider error: {last_error}")
 
 

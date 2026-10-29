@@ -28,6 +28,74 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 18 * 1024 * 1024;
 const ALLOWED_EXT = /\.(png|jpe?g|webp|heic|heif|pdf|txt|md|csv|json)$/i;
 const CHAT_TIMEOUT_MS = 120_000;
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '/api';
+
+async function streamChat(message: string, onDelta: (delta: string) => void): Promise<void> {
+  const token = localStorage.getItem('cp_token');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE}/ai/chat/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ message }),
+      signal: controller.signal,
+    });
+    if (res.status === 401) {
+      localStorage.removeItem('cp_token');
+      window.location.href = '/login';
+      throw new Error('Session expired. Please sign in again.');
+    }
+    if (!res.ok || !res.body) {
+      let detail = 'Could not reach the AI service. Please retry.';
+      try {
+        const data = (await res.json()) as { detail?: string };
+        if (typeof data?.detail === 'string') detail = data.detail;
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new Error(detail);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let boundary = buffer.indexOf('\n\n');
+      while (boundary !== -1) {
+        const event = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        for (const line of event.split('\n')) {
+          if (!line.startsWith('data:')) continue;
+          const payload = line.slice(5).trim();
+          if (!payload) continue;
+          if (payload === '[DONE]') return;
+          let parsed: { delta?: string; error?: string };
+          try {
+            parsed = JSON.parse(payload) as { delta?: string; error?: string };
+          } catch {
+            continue;
+          }
+          if (parsed.error) throw new Error(parsed.error);
+          if (parsed.delta) onDelta(parsed.delta);
+        }
+        boundary = buffer.indexOf('\n\n');
+      }
+    }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('The answer took too long. Please try a shorter question.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export default function GeminiChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -103,7 +171,6 @@ export default function GeminiChat() {
     setPending([]);
     setLoading(true);
     try {
-      let reply: string;
       if (filesToSend.length) {
         const form = new FormData();
         form.append('message', message);
@@ -111,25 +178,58 @@ export default function GeminiChat() {
         const res = await api.post<{ response: string }>('/ai/chat/attachments', form, {
           timeout: CHAT_TIMEOUT_MS,
         });
-        reply = res.data.response;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: res.data.response || 'No response from Gemini.',
+          },
+        ]);
       } else {
-        const res = await api.post<{ response: string }>(
-          '/ai/chat',
-          { message },
-          { timeout: CHAT_TIMEOUT_MS },
-        );
-        reply = res.data.response;
+        const assistantId = crypto.randomUUID();
+        let added = false;
+        const ensureBubble = () => {
+          if (added) return;
+          added = true;
+          setMessages((prev) => [
+            ...prev,
+            { id: assistantId, role: 'assistant', content: '' },
+          ]);
+        };
+        const appendDelta = (delta: string) =>
+          setMessages((prev) =>
+            prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + delta } : m)),
+          );
+        try {
+          await streamChat(message, (delta) => {
+            ensureBubble();
+            appendDelta(delta);
+          });
+          if (!added) {
+            const res = await api.post<{ response: string }>(
+              '/ai/chat',
+              { message },
+              { timeout: CHAT_TIMEOUT_MS },
+            );
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                content: res.data.response || 'No response from Gemini.',
+              },
+            ]);
+          }
+        } catch (err) {
+          if (!added) throw err;
+          toast.error(
+            err instanceof Error ? err.message : 'The answer was cut off. Please retry.',
+          );
+        }
       }
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: reply || 'No response from Gemini.',
-        },
-      ]);
     } catch (err) {
-      toast.error(errorMessage(err));
+      toast.error(err instanceof Error ? err.message : errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -230,7 +330,7 @@ export default function GeminiChat() {
                   )}
                 </div>
               ))}
-              {loading && (
+              {loading && messages[messages.length - 1]?.role !== 'assistant' && (
                 <div className="flex items-start gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-600 text-white">
                     <Bot className="h-4 w-4" />
