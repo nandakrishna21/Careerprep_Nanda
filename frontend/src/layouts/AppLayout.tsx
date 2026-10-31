@@ -2,6 +2,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   Binary,
+  Bot,
   BookOpen,
   Briefcase,
   Building2,
@@ -16,6 +17,7 @@ import {
   Menu,
   MessageCircle,
   Monitor,
+  Route,
   Search,
   Sparkles,
   Trophy,
@@ -85,6 +87,20 @@ const nav: NavGroup[] = [
       { href: DSA_YOUTUBE, label: 'DSA on YouTube', icon: Youtube },
       { href: DSA_PLAYLIST_TELUGU, label: 'DSA Playlist (Telugu)', icon: Youtube },
       { href: DSA_PLAYLIST_ENGLISH, label: 'DSA Playlist (English)', icon: Youtube },
+    ],
+  },
+  {
+    label: 'FDE',
+    items: [
+      { to: '/tracks/fde', label: 'FDE Roadmap', icon: Route },
+      { to: '/tracks/fde/resources', label: 'FDE Free Resources', icon: BookOpen },
+    ],
+  },
+  {
+    label: 'AI Agent Engineer',
+    items: [
+      { to: '/tracks/agents', label: 'Agent Engineer Roadmap', icon: Bot },
+      { to: '/tracks/agents/resources', label: 'Agent Free Resources', icon: BookOpen },
     ],
   },
   {
