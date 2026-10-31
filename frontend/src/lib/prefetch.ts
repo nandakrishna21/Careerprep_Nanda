@@ -23,6 +23,7 @@ const loaders: Record<string, () => Promise<unknown>> = {
   '/tracks/fde/resources': () => import('../pages/tracks/TrackResources'),
   '/tracks/agents': () => import('../pages/tracks/TrackRoadmap'),
   '/tracks/agents/resources': () => import('../pages/tracks/TrackResources'),
+  '/startups': () => import('../pages/startups/StartupJobs'),
   '/ai/quiz-generator': () => import('../pages/ai/AiQuizGenerator'),
   '/ai/interview': () => import('../pages/ai/AiInterview'),
   '/ai/planner': () => import('../pages/ai/AiPlanner'),

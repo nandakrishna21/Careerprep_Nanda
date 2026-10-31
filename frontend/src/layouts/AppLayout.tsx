@@ -17,6 +17,7 @@ import {
   Menu,
   MessageCircle,
   Monitor,
+  Rocket,
   Route,
   Search,
   Sparkles,
@@ -101,6 +102,12 @@ const nav: NavGroup[] = [
     items: [
       { to: '/tracks/agents', label: 'Agent Engineer Roadmap', icon: Bot },
       { to: '/tracks/agents/resources', label: 'Agent Free Resources', icon: BookOpen },
+    ],
+  },
+  {
+    label: 'Startup Jobs',
+    items: [
+      { to: '/startups', label: 'HYD & BLR Research', icon: Rocket },
     ],
   },
   {

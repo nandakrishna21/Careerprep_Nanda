@@ -40,6 +40,8 @@ const DsaPrepWay = lazy(() => import('./pages/dsa/DsaPrepWay'));
 const TrackRoadmap = lazy(() => import('./pages/tracks/TrackRoadmap'));
 const TrackResources = lazy(() => import('./pages/tracks/TrackResources'));
 
+const StartupJobs = lazy(() => import('./pages/startups/StartupJobs'));
+
 const QuizRunner = lazy(() => import('./pages/quiz/QuizRunner'));
 
 const AiQuizGenerator = lazy(() => import('./pages/ai/AiQuizGenerator'));
@@ -159,6 +161,8 @@ export default function App() {
 
         <Route path="/tracks/:slug" element={<Protected><TrackRoadmap /></Protected>} />
         <Route path="/tracks/:slug/resources" element={<Protected><TrackResources /></Protected>} />
+
+        <Route path="/startups" element={<Protected><StartupJobs /></Protected>} />
 
         <Route path="/ai/quiz-generator" element={<Protected><AiQuizGenerator /></Protected>} />
         <Route path="/ai/interview" element={<Protected><AiInterview /></Protected>} />
