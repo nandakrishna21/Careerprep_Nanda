@@ -161,9 +161,6 @@ export default function Admin() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="min-w-0">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admin Panel</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Manage content, quizzes, jobs, users and review platform analytics.
-        </p>
       </div>
 
       <nav className="flex flex-wrap gap-2 border-b border-slate-200 pb-2 dark:border-slate-800">
@@ -623,7 +620,7 @@ function CoursesPanel() {
       </div>
 
       {courses.length === 0 ? (
-        <EmptyState title="No courses yet" description="Create the first course to get started." />
+        <EmptyState title="No courses yet" description="Create your first course." />
       ) : (
         <div className="card overflow-x-auto p-0">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -1000,15 +997,15 @@ function CoursesPanel() {
                 value={modal.category}
                 onChange={(e) => setModal({ ...modal, category: e.target.value as 'government' | 'it' })}
               >
-                <option value="government">government</option>
-                <option value="it">it</option>
+                <option value="government">Government</option>
+                <option value="it">IT</option>
               </Select>
             </Labeled>
             <Labeled label="Level">
               <Select value={modal.level} onChange={(e) => setModal({ ...modal, level: e.target.value })}>
-                <option value="beginner">beginner</option>
-                <option value="intermediate">intermediate</option>
-                <option value="advanced">advanced</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
               </Select>
             </Labeled>
             <div className="sm:col-span-2">
@@ -1019,7 +1016,7 @@ function CoursesPanel() {
                 />
               </Labeled>
             </div>
-            <Labeled label="Icon (lucide name)">
+            <Labeled label="Icon (Lucide name)">
               <Input value={modal.icon} onChange={(e) => setModal({ ...modal, icon: e.target.value })} />
             </Labeled>
             <Labeled label="Order">
@@ -1344,7 +1341,7 @@ function QuizzesPanel() {
       </div>
 
       {quizzes.length === 0 ? (
-        <EmptyState title="No quizzes yet" description="Create a quiz to start collecting attempts." />
+        <EmptyState title="No quizzes yet" description="Create your first quiz." />
       ) : (
         <div className="card overflow-x-auto p-0">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -1488,9 +1485,9 @@ function QuizzesPanel() {
                                     value={qForm.difficulty}
                                     onChange={(e) => setQForm({ ...qForm, difficulty: e.target.value })}
                                   >
-                                    <option value="beginner">beginner</option>
-                                    <option value="intermediate">intermediate</option>
-                                    <option value="advanced">advanced</option>
+                                    <option value="beginner">Beginner</option>
+                                    <option value="intermediate">Intermediate</option>
+                                    <option value="advanced">Advanced</option>
                                   </Select>
                                 </Labeled>
                               </div>
@@ -1641,18 +1638,18 @@ function QuizzesPanel() {
             </Labeled>
             <Labeled label="Quiz type">
               <Select value={modal.quiz_type} onChange={(e) => setModal({ ...modal, quiz_type: e.target.value })}>
-                <option value="topic">topic</option>
-                <option value="pyq">pyq</option>
-                <option value="mock">mock</option>
-                <option value="current_affair">current_affair</option>
-                <option value="ai">ai</option>
+                <option value="topic">Topic</option>
+                <option value="pyq">PYQ</option>
+                <option value="mock">Mock</option>
+                <option value="current_affair">Current affairs</option>
+                <option value="ai">AI</option>
               </Select>
             </Labeled>
             <Labeled label="Difficulty">
               <Select value={modal.difficulty} onChange={(e) => setModal({ ...modal, difficulty: e.target.value })}>
-                <option value="beginner">beginner</option>
-                <option value="intermediate">intermediate</option>
-                <option value="advanced">advanced</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
               </Select>
             </Labeled>
             <Labeled label="Duration (minutes)">
@@ -1674,14 +1671,12 @@ function QuizzesPanel() {
               <Input
                 value={modal.topic_id}
                 onChange={(e) => setModal({ ...modal, topic_id: e.target.value })}
-                placeholder="leave empty"
               />
             </Labeled>
             <Labeled label="Exam ID (optional)">
               <Input
                 value={modal.exam_id}
                 onChange={(e) => setModal({ ...modal, exam_id: e.target.value })}
-                placeholder="leave empty"
               />
             </Labeled>
             <div className="sm:col-span-2">
@@ -1824,7 +1819,7 @@ function ContentPanel() {
     if (!window.confirm(`Delete "${item.title}"?`)) return;
     try {
       await del(`/admin/current-affairs/${item.id}`);
-      toast.success('Deleted');
+      toast.success('Entry deleted');
       await load();
     } catch (err) {
       toast.error(errorMessage(err));
@@ -1855,7 +1850,7 @@ function ContentPanel() {
       </div>
 
       {items.length === 0 ? (
-        <EmptyState title="No content yet" description="Create the first current affairs entry." />
+        <EmptyState title="No content yet" description="Create your first entry." />
       ) : (
         <div className="space-y-3">
           {items.map((item) => {
@@ -1912,9 +1907,9 @@ function ContentPanel() {
             </Labeled>
             <Labeled label="Period">
               <Select value={modal.period} onChange={(e) => setModal({ ...modal, period: e.target.value })}>
-                <option value="daily">daily</option>
-                <option value="weekly">weekly</option>
-                <option value="monthly">monthly</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
               </Select>
             </Labeled>
             <Labeled label="Date">
@@ -2091,7 +2086,7 @@ function NotificationsPanel() {
       {items === null ? (
         <Spinner />
       ) : items.length === 0 ? (
-        <EmptyState title="No notifications" description="New signups and alerts will appear here." />
+        <EmptyState title="No notifications" description="Signups and system alerts appear here." />
       ) : (
         <div className="space-y-2">
           {items.map((n) => (
@@ -2169,7 +2164,7 @@ function JobsPanel() {
   const runSync = async () => {
     if (syncing) return;
     if (syncStatus && !syncStatus.token_configured) {
-      toast.error('Set APIFY_TOKEN on Render (Environment) before syncing live jobs.');
+      toast.error('Live sync is unavailable — the crawler API key has not been configured on the server.');
       return;
     }
     setSyncing(true);
@@ -2197,7 +2192,7 @@ function JobsPanel() {
   const runRemoteSync = async () => {
     if (syncing) return;
     if (syncStatus && !syncStatus.token_configured) {
-      toast.error('Set APIFY_TOKEN on Render (Environment) before syncing remote jobs.');
+      toast.error('Remote sync is unavailable — the crawler API key has not been configured on the server.');
       return;
     }
     setSyncing(true);
@@ -2360,7 +2355,7 @@ function JobsPanel() {
       )}
 
       {jobs.length === 0 ? (
-        <EmptyState title="No jobs yet" description="Post the first opportunity for your learners." />
+        <EmptyState title="No jobs yet" description="Create your first job posting." />
       ) : (
         <div className="card overflow-x-auto p-0">
           <table className="w-full min-w-[720px] text-left text-sm">
@@ -2474,16 +2469,16 @@ function JobsPanel() {
                 value={modal.type}
                 onChange={(e) => setModal({ ...modal, type: e.target.value, category: '' })}
               >
-                <option value="government">government</option>
-                <option value="it">it</option>
+                <option value="government">Government</option>
+                <option value="it">IT</option>
               </Select>
             </Labeled>
             <Labeled label="Category">
               <Select value={modal.category} onChange={(e) => setModal({ ...modal, category: e.target.value })}>
-                <option value="">select…</option>
+                <option value="">Select category</option>
                 {categories.map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {titleCase(c)}
                   </option>
                 ))}
               </Select>
@@ -2506,7 +2501,7 @@ function JobsPanel() {
               <Input
                 value={modal.apply_link}
                 onChange={(e) => setModal({ ...modal, apply_link: e.target.value })}
-                placeholder="https://…"
+                placeholder="https://example.com"
               />
             </Labeled>
             <Labeled label="Deadline">
@@ -2607,7 +2602,7 @@ function UsersPanel() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name or email…"
+            placeholder="Search by name or email"
             aria-label="Search users"
           />
         </div>
@@ -2615,7 +2610,7 @@ function UsersPanel() {
       </div>
 
       {users.length === 0 ? (
-        <EmptyState title="No users found" description="Try a different search term." />
+        <EmptyState title="No users found" description="No users match the current search." />
       ) : (
         <div className="card overflow-x-auto p-0">
           <table className="w-full min-w-[760px] text-left text-sm">
@@ -2639,7 +2634,7 @@ function UsersPanel() {
                   <tr key={u.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
                     <td className="px-4 py-3">
                       <span className="font-semibold text-slate-800 dark:text-slate-100">{u.full_name}</span>
-                      {isSelf && <Badge color="brand">you</Badge>}
+                      {isSelf && <Badge color="brand">You</Badge>}
                     </td>
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{u.email}</td>
                     <td className="px-4 py-3">
@@ -2650,13 +2645,13 @@ function UsersPanel() {
                         aria-label={`Role for ${u.full_name}`}
                         className="input py-1.5 text-xs disabled:opacity-60"
                       >
-                        <option value="student">student</option>
-                        <option value="admin">admin</option>
+                        <option value="student">Student</option>
+                        <option value="admin">Admin</option>
                         {user?.role === 'superadmin' && (
-                          <option value="superadmin">superadmin</option>
+                          <option value="superadmin">Superadmin</option>
                         )}
                       </select>
-                      {isSelf && <p className="mt-0.5 text-[10px] text-slate-400">own role is locked</p>}
+                      {isSelf && <p className="mt-0.5 text-[10px] text-slate-400">Your role cannot be changed</p>}
                     </td>
                     <td className="px-4 py-3 tabular-nums text-slate-600 dark:text-slate-300">
                       {u.profile?.xp ?? 0}
@@ -2669,14 +2664,14 @@ function UsersPanel() {
                           type="button"
                           disabled={isSelf || busyId === u.id}
                           onClick={() => void patch(u, { is_approved: !u.is_approved })}
-                          title={isSelf ? 'You cannot change your own approval' : undefined}
+                          title={isSelf ? 'Your own approval cannot be changed' : undefined}
                           className={`rounded-full px-2.5 py-1 text-xs font-bold transition disabled:opacity-60 ${
                             u.is_approved
                               ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300'
                               : 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300'
                           }`}
                         >
-                          {u.is_approved ? 'approved' : 'pending'}
+                          {u.is_approved ? 'Approved' : 'Pending'}
                         </button>
                       ) : (
                         <span
@@ -2686,7 +2681,7 @@ function UsersPanel() {
                               : 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
                           }`}
                         >
-                          {u.is_approved ? 'approved' : 'pending'}
+                          {u.is_approved ? 'Approved' : 'Pending'}
                         </span>
                       )}
                     </td>
@@ -2701,7 +2696,7 @@ function UsersPanel() {
                             : 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-500/15 dark:text-rose-300'
                         }`}
                       >
-                        {u.is_active ? 'active' : 'blocked'}
+                        {u.is_active ? 'Active' : 'Blocked'}
                       </button>
                     </td>
                     <td className="px-4 py-3 text-right">

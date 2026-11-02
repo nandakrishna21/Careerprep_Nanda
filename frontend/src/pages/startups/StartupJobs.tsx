@@ -177,7 +177,7 @@ export default function StartupJobs() {
   const runSync = async () => {
     if (syncing) return;
     if (syncStatus && syncStatus.token_configured === false) {
-      toast.error('Set APIFY_TOKEN on Render (Environment) before refreshing openings.');
+      toast.error('Live refresh is unavailable — the crawler API key has not been configured on the server.');
       return;
     }
     setSyncing(true);
