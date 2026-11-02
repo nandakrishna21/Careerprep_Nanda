@@ -15,7 +15,7 @@ import {
   Share2,
   Wallet,
 } from 'lucide-react';
-import api, { errorMessage, get, post, del } from '../../lib/api';
+import api, { errorMessage, get, post, del, invalidateCache } from '../../lib/api';
 import type { Job, JobFacets, Paged, RemoteSite } from '../../lib/types';
 import { Badge, Button, Card, EmptyState, Select, Spinner } from '../../components/ui';
 import { useAuth } from '../../stores/auth';
@@ -57,6 +57,11 @@ interface RemoteSyncResult {
   synced_total: number;
 }
 
+interface AdminSyncStatus {
+  token_configured: boolean;
+  last_synced_at: string | null;
+}
+
 function timeAgo(iso: string | null): string | null {
   if (!iso) return null;
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -81,7 +86,8 @@ function daysLeft(deadline: string | null): { label: string; tone: string } | nu
 }
 
 export default function Jobs() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('all');
   const [category, setCategory] = useState('');
@@ -102,6 +108,7 @@ export default function Jobs() {
   const [remoteSites, setRemoteSites] = useState<RemoteSite[]>([]);
   const [syncStatus, setSyncStatus] = useState<RemoteSyncStatus | null>(null);
   const [syncingRemote, setSyncingRemote] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Filter options come from the board itself so the UI never offers a value that
@@ -152,6 +159,74 @@ export default function Jobs() {
       toast.error(errorMessage(err), { id: 'user-remote-sync', duration: 8000 });
     } finally {
       setSyncingRemote(false);
+    }
+  };
+
+  const reloadFacets = async () => {
+    try {
+      const data = await get<JobFacets>('/jobs/facets');
+      setFacets(data ?? null);
+    } catch {
+      /* keep the facets we already have */
+    }
+  };
+
+  const pollForFreshSync = async (before: string | null) => {
+    const t0 = Date.now();
+    for (let i = 0; i < 150; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      const elapsed = Math.round((Date.now() - t0) / 1000);
+      const label = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
+      let status: RemoteSyncStatus | null = null;
+      try {
+        status = await get<RemoteSyncStatus>('/jobs/sync/status');
+        setSyncStatus(status);
+      } catch {
+        /* keep polling through blips */
+      }
+      if (status?.last_synced_at && status.last_synced_at !== before) return true;
+      toast.loading(`Refreshing job boards… ${label} elapsed — safe to keep browsing.`, {
+        id: 'jobs-refresh',
+      });
+    }
+    return false;
+  };
+
+  const refreshOpenings = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const admin = await get<AdminSyncStatus>('/admin/jobs/sync/status');
+      if (admin.token_configured === false) {
+        toast.error(
+          'Live refresh is unavailable — the crawler API key has not been configured on the server.',
+          { id: 'jobs-refresh' }
+        );
+        return;
+      }
+      const before = admin.last_synced_at ?? syncStatus?.last_synced_at ?? null;
+      toast.loading('Refreshing government and IT job boards…', { id: 'jobs-refresh' });
+      await post<{ started: boolean }>('/admin/jobs/sync?track=government,it&background=true');
+      const fresh = await pollForFreshSync(before);
+      invalidateCache('/jobs');
+      setPage(1);
+      setRefreshKey((k) => k + 1);
+      await Promise.all([reloadFacets(), loadSyncStatus()]);
+      if (fresh) {
+        toast.success('Board refreshed — new and updated openings are live.', {
+          id: 'jobs-refresh',
+          duration: 6000,
+        });
+      } else {
+        toast('Still crawling — the list will catch up shortly.', {
+          id: 'jobs-refresh',
+          duration: 8000,
+        });
+      }
+    } catch (err) {
+      toast.error(errorMessage(err), { id: 'jobs-refresh', duration: 8000 });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -331,6 +406,20 @@ export default function Jobs() {
             className="input pl-10"
           />
         </form>
+        {tab !== 'remote' && tab !== 'saved' && (
+          <div className="flex items-center gap-3">
+            {syncStatus?.last_synced_at && (
+              <span className="hidden text-xs text-slate-400 md:inline">
+                Updated {timeAgo(syncStatus.last_synced_at)}
+              </span>
+            )}
+            {isAdmin && (
+              <Button variant="outline" onClick={() => void refreshOpenings()} loading={refreshing}>
+                <RefreshCw className="h-4 w-4" /> Refresh openings
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {tab !== 'saved' && topCities.length > 0 && (
