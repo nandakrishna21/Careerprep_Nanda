@@ -34,6 +34,28 @@ OTHER = "other"
 # disciplines are checked before the catch-all "software engineer".
 _IT_RULES: list[tuple[str, tuple[str, ...]]] = [
     (
+        # Named programs first: "Forward Deployed AI Engineer" must stay FDE.
+        "forward-deployment",
+        (
+            r"\bforward[\s\-]?deployed\b",
+            r"\bforward[\s\-]?deployment\b",
+            r"\bfde\b",
+        ),
+    ),
+    (
+        # Agent-titled roles before data-science-ai, whose broad \bai\b would
+        # otherwise swallow every "AI Agent …" title.
+        "ai-agentic",
+        (
+            r"\bagentic\b",
+            r"\bai[\s/&\-]+agents?\b",
+            r"\bllm agents?\b",
+            r"\bmulti[\s\-]?agents?\b",
+            r"\bgenai agents?\b",
+            r"\bagent (?:engineer|developer|architect|scientist)\b",
+        ),
+    ),
+    (
         "fullstack",
         (
             r"\bfull[\s\-]?stack\b",
@@ -401,6 +423,8 @@ _GOV_RULES: list[tuple[str, tuple[str, ...]]] = [
 
 ROLE_LABELS: dict[str, str] = {
     # IT
+    "forward-deployment": "Forward Deployment (FDE)",
+    "ai-agentic": "AI Agentic Engineering",
     "fullstack": "Full Stack",
     "frontend": "Frontend",
     "backend": "Backend",
@@ -719,8 +743,12 @@ def ensure_job_columns(engine) -> None:
 
 
 def backfill_jobs(engine) -> int:
-    """Derive ``role``/``city``/experience for rows written before these columns existed."""
-    from sqlalchemy import or_, select
+    """Derive ``role``/``city``/experience for rows written before these columns existed.
+
+    Role and city are recomputed for every row so taxonomy rule changes reach
+    listings that a crawl no longer touches.
+    """
+    from sqlalchemy import select
     from sqlalchemy.orm import sessionmaker
 
     from app.models import Job
@@ -729,18 +757,18 @@ def backfill_jobs(engine) -> int:
 
     db = sessionmaker(bind=engine)()
     try:
-        rows = db.scalars(
-            select(Job).where(
-                or_(Job.role.is_(None), Job.city.is_(None), Job.exp_min.is_(None))
-            )
-        ).all()
+        rows = db.scalars(select(Job)).all()
+        changed = 0
         for row in rows:
-            if row.role is None or row.city is None:
-                row.role, row.city = classify_job(row.title, row.type, row.location)
+            role, city = classify_job(row.title, row.type, row.location)
+            if row.role != role or row.city != city:
+                row.role, row.city = role, city
+                changed += 1
             if row.exp_min is None:
                 row.exp_min, row.exp_max = classify_experience(row.title, row.description)
+                changed += 1
         db.commit()
-        return len(rows)
+        return changed
     finally:
         db.close()
 

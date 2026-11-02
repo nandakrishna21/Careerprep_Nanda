@@ -975,6 +975,8 @@ _LINKEDIN_ROLES = [
     "database developer",
     "cyber security analyst",
     "technical support engineer",
+    "forward deployed engineer",
+    "ai agent engineer",
 ]
 
 _INDEED_ROLES = [
@@ -990,6 +992,8 @@ _INDEED_ROLES = [
     "data analyst",
     "software test engineer",
     "web developer",
+    "forward deployed engineer",
+    "ai agent engineer",
 ]
 
 
