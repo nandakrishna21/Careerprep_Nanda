@@ -171,9 +171,13 @@ export default function Jobs() {
     }
   };
 
-  const pollForFreshSync = async (before: string | null) => {
+  const pollUntil = async (
+    check: (status: RemoteSyncStatus) => boolean,
+    message: string,
+    maxAttempts = 300,
+  ): Promise<boolean> => {
     const t0 = Date.now();
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < maxAttempts; i++) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
       const elapsed = Math.round((Date.now() - t0) / 1000);
       const label = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
@@ -184,8 +188,8 @@ export default function Jobs() {
       } catch {
         /* keep polling through blips */
       }
-      if (status?.last_synced_at && status.last_synced_at !== before) return true;
-      toast.loading(`Refreshing job boards… ${label} elapsed — safe to keep browsing.`, {
+      if (status && check(status)) return true;
+      toast.loading(`${message}… ${label} elapsed — safe to keep browsing.`, {
         id: 'jobs-refresh',
       });
     }
@@ -196,7 +200,10 @@ export default function Jobs() {
     if (refreshing) return;
     setRefreshing(true);
     try {
-      const admin = await get<AdminSyncStatus>('/admin/jobs/sync/status');
+      const [pre, admin] = await Promise.all([
+        get<RemoteSyncStatus>('/jobs/sync/status'),
+        get<AdminSyncStatus>('/admin/jobs/sync/status'),
+      ]);
       if (admin.token_configured === false) {
         toast.error(
           'Live refresh is unavailable — the crawler API key has not been configured on the server.',
@@ -204,21 +211,57 @@ export default function Jobs() {
         );
         return;
       }
-      const before = admin.last_synced_at ?? syncStatus?.last_synced_at ?? null;
+      const before = admin.last_synced_at ?? pre.last_synced_at ?? null;
+
       toast.loading('Refreshing government and IT job boards…', { id: 'jobs-refresh' });
       await post<{ started: boolean }>('/admin/jobs/sync?track=government,it&background=true');
-      const fresh = await pollForFreshSync(before);
+      const mainFresh = await pollUntil(
+        (status) => Boolean(status.last_synced_at && status.last_synced_at !== before),
+        'Refreshing job boards'
+      );
       invalidateCache('/jobs');
       setPage(1);
       setRefreshKey((k) => k + 1);
       await Promise.all([reloadFacets(), loadSyncStatus()]);
-      if (fresh) {
-        toast.success('Board refreshed — new and updated openings are live.', {
+
+      if (!mainFresh) {
+        toast('Still crawling — the list will catch up shortly.', {
+          id: 'jobs-refresh',
+          duration: 8000,
+        });
+        return;
+      }
+
+      // Second phase: the remote boards run under their own track, after the
+      // main crawl releases the sync lock.
+      toast.loading('Government and IT boards refreshed — crawling remote boards…', {
+        id: 'jobs-refresh',
+      });
+      let remoteFresh = false;
+      try {
+        const mid = await get<RemoteSyncStatus>('/jobs/sync/status');
+        const beforeRemote = mid.last_remote_synced_at ?? null;
+        await post<{ started: boolean }>('/admin/jobs/sync?track=remote&background=true');
+        remoteFresh = await pollUntil(
+          (status) =>
+            Boolean(status.last_remote_synced_at && status.last_remote_synced_at !== beforeRemote),
+          'Crawling remote boards',
+          150
+        );
+      } catch {
+        /* remote is a bonus phase — the main refresh already succeeded */
+      }
+      invalidateCache('/jobs');
+      setRefreshKey((k) => k + 1);
+      await Promise.all([reloadFacets(), loadSyncStatus()]);
+
+      if (remoteFresh) {
+        toast.success('All boards refreshed — new and updated openings are live.', {
           id: 'jobs-refresh',
           duration: 6000,
         });
       } else {
-        toast('Still crawling — the list will catch up shortly.', {
+        toast('Boards refreshed — remote listings are still updating.', {
           id: 'jobs-refresh',
           duration: 8000,
         });

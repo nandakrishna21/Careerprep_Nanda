@@ -155,7 +155,7 @@ export default function StartupJobs() {
 
   const pollForFreshSync = async (before: string | null) => {
     const t0 = Date.now();
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 300; i++) {
       await new Promise((resolve) => setTimeout(resolve, 5000));
       const elapsed = Math.round((Date.now() - t0) / 1000);
       const label = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;

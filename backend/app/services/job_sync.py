@@ -996,6 +996,37 @@ _INDEED_ROLES = [
     "ai agent engineer",
 ]
 
+# Deep coverage for the AI engineering, AI-agent and forward-deployment
+# families the role filter exposes. Narrow queries, so each runs at the full
+# per-run item cap instead of the generic list's smaller defaults.
+_AI_ROLE_QUERIES = [
+    "forward deployed engineer",
+    "forward deployment engineer",
+    "ai agent engineer",
+    "agentic ai engineer",
+    "llm engineer",
+    "generative ai engineer",
+    "genai engineer",
+    "ai engineer",
+    "artificial intelligence engineer",
+]
+
+_NAUKRI_AI_URLS = [
+    "https://www.naukri.com/ai-engineer-jobs?k=ai+engineer",
+    "https://www.naukri.com/llm-engineer-jobs?k=llm+engineer",
+    "https://www.naukri.com/generative-ai-jobs?k=generative+ai",
+    "https://www.naukri.com/forward-deployed-engineer-jobs?k=forward+deployed+engineer",
+]
+
+
+def _naukri_ai_input(max_items: int) -> dict:
+    per_url = max(1, (max_items or 24) // len(_NAUKRI_AI_URLS))
+    return {
+        "startUrls": [{"url": url} for url in _NAUKRI_AI_URLS],
+        "maxPagesPerUrl": 1,
+        "maxJobsPerUrl": per_url,
+    }
+
 
 SOURCES: list[SourceSpec] = [
     SourceSpec(
@@ -1044,6 +1075,36 @@ SOURCES: list[SourceSpec] = [
         )
         for role in _INDEED_ROLES
     ],
+    *[
+        SourceSpec(
+            key="linkedin",
+            label="LinkedIn",
+            job_type="it",
+            actor="curious_coder/linkedin-jobs-scraper",
+            build_input=_linkedin_input(role, cap=25),
+            map_item=_map_linkedin,
+        )
+        for role in _AI_ROLE_QUERIES
+    ],
+    *[
+        SourceSpec(
+            key="indeed",
+            label="Indeed",
+            job_type="it",
+            actor="curious_coder/indeed-scraper",
+            build_input=_indeed_input(role, "India", cap=25),
+            map_item=_map_indeed,
+        )
+        for role in _AI_ROLE_QUERIES
+    ],
+    SourceSpec(
+        key="naukri",
+        label="Naukri",
+        job_type="it",
+        actor="curious_coder/naukri-job-scraper",
+        build_input=_naukri_ai_input,
+        map_item=_map_naukri,
+    ),
     SourceSpec(
         key="naukri",
         label="Naukri",
@@ -1058,11 +1119,11 @@ SOURCES: list[SourceSpec] = [
             label="Glassdoor",
             job_type="it",
             actor="agentx/glassdoor-jobs-scraper",
-            build_input=_glassdoor_input(keyword),
-            map_item=_map_glassdoor,
-        )
-        for keyword in ("software developer", "data analyst")
-    ],
+        build_input=_glassdoor_input(keyword),
+        map_item=_map_glassdoor,
+    )
+    for keyword in ("software developer", "data analyst", "ai engineer", "forward deployed engineer")
+],
     *[
         SourceSpec(
             key="linkedin",
@@ -1130,6 +1191,9 @@ _LINKEDIN_REMOTE_ROLES = [
     "remote react developer",
     "remote devops engineer",
     "remote data analyst",
+    "ai agent engineer",
+    "forward deployed engineer",
+    "generative ai engineer",
 ]
 
 _INDEED_REMOTE_ROLES = [
@@ -1139,6 +1203,9 @@ _INDEED_REMOTE_ROLES = [
     "full stack developer",
     "python developer",
     "data analyst",
+    "ai engineer",
+    "ai agent engineer",
+    "forward deployed engineer",
 ]
 
 REMOTE_SOURCES: list[SourceSpec] = [
@@ -1407,7 +1474,7 @@ def sync_jobs(db: Session, tracks: list[str] | None = None) -> dict:
 
     # Apify throttles concurrent paid runs on the FREE plan (HTTP 402), so keep the
     # pool small and let _start_run retry rather than firing everything at once.
-    # The crawler now fans out over ~40 role queries, so the pool has to stay modest.
+    # The crawler now fans out over 70 role queries, so the pool has to stay modest.
     max_workers = min(4, max(1, len(specs)))
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {
