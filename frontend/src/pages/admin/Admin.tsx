@@ -2119,21 +2119,33 @@ function NotificationsPanel() {
   );
 }
 
+const JOBS_PAGE_SIZE = 20;
+
 function JobsPanel() {
   const [jobs, setJobs] = useState<Job[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [showSources, setShowSources] = useState(false);
   const [modal, setModal] = useState<JobFormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [syncing, setSyncing] = useState(false);
 
-  const load = async () => {
+  const load = async (): Promise<Job[]> => {
     try {
-      const data = await get<unknown>('/admin/jobs');
-      setJobs(toItems<Job>(data));
+      const data = await get<{ items: Job[]; total: number }>('/admin/jobs', {
+        page,
+        page_size: JOBS_PAGE_SIZE,
+      });
+      const rows = toItems<Job>(data);
+      setJobs(rows);
+      setTotal(data.total ?? rows.length);
+      return rows;
     } catch (err) {
       toast.error(errorMessage(err));
       setJobs([]);
+      return [];
     }
   };
 
@@ -2147,6 +2159,10 @@ function JobsPanel() {
 
   useEffect(() => {
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  useEffect(() => {
     void loadStatus();
   }, []);
 
@@ -2261,7 +2277,8 @@ function JobsPanel() {
     try {
       await del(`/admin/jobs/${job.id}`);
       toast.success('Job deleted');
-      await load();
+      const rows = await load();
+      if (rows.length === 0 && page > 1) setPage(page - 1);
     } catch (err) {
       toast.error(errorMessage(err));
     }
@@ -2276,7 +2293,7 @@ function JobsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <PageNote>
-          {jobs.length} jobs
+          {total} jobs
           {syncStatus?.last_synced_at
             ? ` · last sync ${formatDate(syncStatus.last_synced_at)}`
             : ' · never synced'}
@@ -2295,22 +2312,49 @@ function JobsPanel() {
       </div>
 
       {crawled.length > 0 && (
-        <div className="card flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-semibold text-slate-500 dark:text-slate-400">Live sources:</span>
-          {crawled.map((row) => (
-            <span
-              key={`${row.source}-${row.job_type}`}
-              className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+        <div className="card px-4 py-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-slate-500 dark:text-slate-400">Live sources</span>
+            {(['government', 'it'] as const).map((kind) => {
+              const rows = crawled.filter((row) => row.job_type === kind);
+              if (!rows.length) return null;
+              const jobsForKind = rows.reduce((sum, row) => sum + row.count, 0);
+              return (
+                <span
+                  key={kind}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  {kind === 'government' ? 'Gov' : 'IT'} · {rows.length} sources
+                  <span className="text-brand-600 dark:text-brand-400">{jobsForKind}</span>
+                </span>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowSources((v) => !v)}
+              className="font-semibold text-brand-600 hover:underline dark:text-brand-400"
             >
-              {titleCase(row.source)} · {row.job_type === 'government' ? 'Gov' : 'IT'}
-              <span className="text-brand-600 dark:text-brand-400">{row.count}</span>
-            </span>
-          ))}
-          {syncResult && (
-            <span className="ml-auto text-slate-400">
-              +{syncResult.created} new · {syncResult.updated} refreshed ·{' '}
-              {syncResult.duration_seconds}s
-            </span>
+              {showSources ? 'Hide details' : 'Show details'}
+            </button>
+            {syncResult && (
+              <span className="ml-auto text-slate-400">
+                +{syncResult.created} new · {syncResult.updated} refreshed ·{' '}
+                {syncResult.duration_seconds}s
+              </span>
+            )}
+          </div>
+          {showSources && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {crawled.map((row) => (
+                <span
+                  key={`${row.source}-${row.job_type}`}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                >
+                  {titleCase(row.source)} · {row.job_type === 'government' ? 'Gov' : 'IT'}
+                  <span className="text-brand-600 dark:text-brand-400">{row.count}</span>
+                </span>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -2384,6 +2428,30 @@ function JobsPanel() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {total > JOBS_PAGE_SIZE && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <PageNote>
+            Showing page {page} of {Math.ceil(total / JOBS_PAGE_SIZE)} · {total} total
+          </PageNote>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              disabled={page * JOBS_PAGE_SIZE >= total}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       )}
 

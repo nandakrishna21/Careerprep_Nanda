@@ -4,7 +4,6 @@ import {
   Building2,
   ChevronDown,
   ExternalLink,
-  Info,
   MapPin,
   RefreshCw,
   Search,
@@ -253,19 +252,6 @@ export default function StartupJobs() {
           </>
         }
       />
-
-      <Card className="flex items-start gap-3 border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
-          <Info className="h-4 w-4" />
-        </span>
-        <div className="text-sm text-amber-900 dark:text-amber-100">
-          <b>How to read this table.</b> Every field marked <i>Not verified</i> could not be
-          confirmed from a public source — do not treat it as fact. Salaries tagged
-          <i> estimate</i> come from job aggregators, not employers. Re-open the job link before
-          applying to confirm the role is still live. Click any row for office, leadership, posting
-          date, careers page and research notes.
-        </div>
-      </Card>
 
       <div className="flex flex-wrap items-center gap-2">
         {CITY_FILTERS.map((c) => (
