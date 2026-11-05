@@ -52,7 +52,7 @@ const stats = [
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, enterDemo } = useAuth();
 
   const onSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -188,10 +188,7 @@ export default function Landing() {
         </section>
 
         <section className="overflow-hidden rounded-3xl bg-gradient-to-r from-brand-600 to-violet-600 px-6 py-12 text-center sm:px-10">
-          <h2 className="text-2xl font-extrabold text-white sm:text-3xl">
-            Start preparing today â€” it is free to join
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm text-white/85">
+          <p className="mx-auto max-w-xl text-sm text-white/85">
             Create your account to unlock quizzes, mock tests, progress tracking and AI tools.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -207,11 +204,21 @@ export default function Landing() {
             >
               I already have an account
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                enterDemo();
+                navigate('/jobs');
+              }}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/40 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+            >
+              Explore Demo (read-only)
+            </button>
           </div>
         </section>
 
         <footer className="border-t border-slate-200 pt-8 text-center text-xs text-slate-400 dark:border-slate-800">
-          CareerPrep Hub â€” government exam preparation &amp; IT career readiness in one place.
+          © 2026 CareerPrep Hub — Nandakrishna. All rights reserved.
         </footer>
       </div>
     </div>

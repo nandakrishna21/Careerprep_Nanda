@@ -18,7 +18,8 @@ api.interceptors.response.use(
   (res) => res,
   (error: AxiosError) => {
     const url = error.config?.url ?? '';
-    if (error.response?.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/register')) {
+    const demo = localStorage.getItem('cp_demo') === '1';
+    if (error.response?.status === 401 && !demo && !url.includes('/auth/login') && !url.includes('/auth/register')) {
       localStorage.removeItem('cp_token');
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';
@@ -38,7 +39,24 @@ export function errorMessage(err: unknown): string {
     if (err.message === 'Network Error') return 'Cannot reach the server. Is the backend running?';
     return err.message;
   }
+  if (err instanceof Error && err.message) return err.message;
   return 'Something went wrong';
+}
+
+// ---------------------------------------------------------------------------
+// Demo mode: read-only. View content freely; every mutation is rejected so
+// reviewers can explore without signing in. Auth endpoints stay usable so a
+// demo visitor can still go through login/register normally.
+// ---------------------------------------------------------------------------
+
+export function isDemo(): boolean {
+  return typeof localStorage !== 'undefined' && localStorage.getItem('cp_demo') === '1';
+}
+
+function guardDemoMutation(url: string): void {
+  if (isDemo() && !url.startsWith('/auth/')) {
+    throw new Error('Demo mode is read-only — create a free account to use this feature.');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -112,16 +130,19 @@ export async function get<T>(
   }
 }
 export async function post<T>(url: string, data?: unknown): Promise<T> {
+  guardDemoMutation(url);
   const res = (await api.post<T>(url, data)).data;
   invalidateCache(url);
   return res;
 }
 export async function put<T>(url: string, data?: unknown): Promise<T> {
+  guardDemoMutation(url);
   const res = (await api.put<T>(url, data)).data;
   invalidateCache(url);
   return res;
 }
 export async function del<T>(url: string): Promise<T> {
+  guardDemoMutation(url);
   const res = (await api.delete<T>(url)).data;
   invalidateCache(url);
   return res;

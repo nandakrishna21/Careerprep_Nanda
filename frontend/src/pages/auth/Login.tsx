@@ -13,7 +13,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, token } = useAuth();
+  const { login, token, enterDemo } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -96,6 +96,16 @@ export default function Login() {
         <Button type="submit" loading={loading} className="w-full">
           Sign in
         </Button>
+        <button
+          type="button"
+          onClick={() => {
+            enterDemo();
+            navigate('/jobs');
+          }}
+          className="w-full rounded-xl border border-brand-200 bg-brand-50 py-2.5 text-sm font-bold text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/20"
+        >
+          Explore Demo (read-only)
+        </button>
       </form>
 
       <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">

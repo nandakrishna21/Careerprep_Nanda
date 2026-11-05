@@ -7,11 +7,15 @@ interface AuthState {
   user: User | null;
   profile: Profile | null;
   hydrated: boolean;
+  /** Read-only demo mode: browse the app without signing in. */
+  demo: boolean;
   setSession: (token: string, user: User) => void;
   hydrate: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<RegisterResponse>;
   logout: () => void;
+  enterDemo: () => void;
+  exitDemo: () => void;
   refreshProfile: () => Promise<void>;
 }
 
@@ -52,6 +56,7 @@ export const useAuth = create<AuthState>((set, get) => ({
   user: initialCache.user,
   profile: initialCache.profile,
   hydrated: false,
+  demo: typeof localStorage !== 'undefined' && localStorage.getItem('cp_demo') === '1',
 
   setSession: (token, user) => {
     localStorage.setItem('cp_token', token);
@@ -114,6 +119,18 @@ export const useAuth = create<AuthState>((set, get) => ({
     localStorage.removeItem('cp_token');
     writeCache(null, null);
     set({ token: null, user: null, profile: null });
+  },
+
+  enterDemo: () => {
+    localStorage.setItem('cp_demo', '1');
+    localStorage.removeItem('cp_token');
+    writeCache(null, null);
+    set({ demo: true, token: null, user: null, profile: null, hydrated: true });
+  },
+
+  exitDemo: () => {
+    localStorage.removeItem('cp_demo');
+    set({ demo: false });
   },
 
   refreshProfile: async () => {

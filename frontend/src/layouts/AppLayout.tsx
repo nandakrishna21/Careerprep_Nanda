@@ -139,7 +139,7 @@ const nav: NavGroup[] = [
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, profile, logout } = useAuth();
+  const { user, profile, logout, demo, exitDemo } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -285,7 +285,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />
-            {user ? (
+            {demo && !user ? (
+              <Link
+                to="/register"
+                className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+              >
+                Create free account
+              </Link>
+            ) : user ? (
             <div className="relative">
               <button
                 className="flex items-center gap-2 rounded-xl p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -332,6 +339,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </header>
+
+        {demo && !user && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+            <span>
+              You are viewing a <span className="font-bold">read-only demo</span> — content is visible,
+              actions are disabled.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                exitDemo();
+                navigate('/login');
+              }}
+              className="ml-auto font-bold underline underline-offset-2 hover:no-underline"
+            >
+              Exit demo
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>

@@ -58,10 +58,10 @@ const FreeResources = lazy(() => import('./pages/FreeResources'));
 const Admin = lazy(() => import('./pages/admin/Admin'));
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const { token, hydrated } = useAuth();
+  const { token, demo, hydrated } = useAuth();
   const location = useLocation();
   if (!hydrated) return <Spinner />;
-  if (!token) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  if (!token && !demo) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   return <>{children}</>;
 }
 
